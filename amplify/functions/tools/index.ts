@@ -151,10 +151,27 @@ async function getMatchDetails(playerId: string, matchId: string) {
     Key: key,
   });
 
-  const response = await s3Client.send(command);
-  const data = await response.Body?.transformToString();
+  try {
+    const response = await s3Client.send(command);
+    const data = await response.Body?.transformToString();
 
-  return data ? JSON.parse(data) : null;
+    if (!data) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(data);
+    } catch (parseError) {
+      console.error("Failed to parse match data:", parseError);
+      throw new Error("Invalid match data format");
+    }
+  } catch (error: any) {
+    if (error.name === "NoSuchKey") {
+      console.log(`Match not found: ${key}`);
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function getPlayerStats(playerId: string) {

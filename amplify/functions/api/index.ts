@@ -81,7 +81,7 @@ export const handler = async (
         const command = new InvokeAgentCommand({
           agentId,
           agentAliasId,
-          sessionId: sessionId || `session-${Date.now()}`,
+          sessionId: sessionId || crypto.randomUUID(),
           inputText: query,
         });
 
@@ -108,7 +108,7 @@ export const handler = async (
           },
           body: JSON.stringify({
             response: fullResponse,
-            sessionId: sessionId || `session-${Date.now()}`,
+            sessionId: sessionId || crypto.randomUUID(),
           }),
         };
       } catch (bedrockError) {

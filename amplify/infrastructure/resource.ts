@@ -1,4 +1,4 @@
-import { Stack } from "aws-cdk-lib";
+import { Stack, RemovalPolicy, Duration } from "aws-cdk-lib";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
@@ -17,7 +17,7 @@ export function defineInfrastructure(scope: Construct) {
     blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
     removalPolicy: stack.node.tryGetContext("production")
       ? undefined
-      : require("aws-cdk-lib").RemovalPolicy.DESTROY,
+      : RemovalPolicy.DESTROY,
     autoDeleteObjects: !stack.node.tryGetContext("production"),
   });
 
@@ -60,7 +60,7 @@ export function defineInfrastructure(scope: Construct) {
       BEDROCK_AGENT_ID: "TBD", // To be configured with actual Bedrock Agent ID
       BEDROCK_AGENT_ALIAS_ID: "TBD",
     },
-    timeout: require("aws-cdk-lib").Duration.seconds(30),
+    timeout: Duration.seconds(30),
   });
 
   // Ingest Lambda Function
@@ -74,7 +74,7 @@ export function defineInfrastructure(scope: Construct) {
     environment: {
       DATA_BUCKET_NAME: dataBucket.bucketName,
     },
-    timeout: require("aws-cdk-lib").Duration.seconds(60),
+    timeout: Duration.seconds(60),
   });
 
   // Tools Lambda Function (for Bedrock Agent)
@@ -88,7 +88,7 @@ export function defineInfrastructure(scope: Construct) {
     environment: {
       DATA_BUCKET_NAME: dataBucket.bucketName,
     },
-    timeout: require("aws-cdk-lib").Duration.seconds(30),
+    timeout: Duration.seconds(30),
   });
 
   // API Gateway REST API
