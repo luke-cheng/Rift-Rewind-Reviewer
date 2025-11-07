@@ -1,0 +1,155 @@
+# Amazon Bedrock Agent Configuration
+# This file provides the OpenAPI schema for the Tools Lambda function action group
+
+openapi: 3.0.0
+info:
+  title: Rift Rewind Reviewer - Player Data Tools
+  description: API for retrieving and analyzing League of Legends match data
+  version: 1.0.0
+
+paths:
+  /tools:
+    post:
+      summary: Execute tool actions for player data retrieval
+      description: Allows the Bedrock Agent to retrieve player match data, match details, and statistics
+      operationId: executeToolAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  description: The tool action to execute
+                  enum:
+                    - getPlayerMatches
+                    - getMatchDetails
+                    - getPlayerStats
+                parameters:
+                  type: object
+                  description: Parameters for the tool action
+                  properties:
+                    playerId:
+                      type: string
+                      description: The unique identifier for the player/summoner
+                    matchId:
+                      type: string
+                      description: The unique identifier for a specific match
+            examples:
+              getPlayerMatches:
+                value:
+                  action: getPlayerMatches
+                  parameters:
+                    playerId: "summoner-123"
+              getMatchDetails:
+                value:
+                  action: getMatchDetails
+                  parameters:
+                    playerId: "summoner-123"
+                    matchId: "NA1_1234567890"
+              getPlayerStats:
+                value:
+                  action: getPlayerStats
+                  parameters:
+                    playerId: "summoner-123"
+      responses:
+        '200':
+          description: Successful tool execution
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  action:
+                    type: string
+                    description: The executed action
+                  result:
+                    type: object
+                    description: The result of the tool action
+              examples:
+                playerMatches:
+                  value:
+                    action: getPlayerMatches
+                    result:
+                      playerId: "summoner-123"
+                      matchCount: 10
+                      matches:
+                        - key: "match-data/summoner-123/NA1_1234567890.json"
+                          lastModified: "2024-01-01T00:00:00.000Z"
+                          size: 5000
+                matchDetails:
+                  value:
+                    action: getMatchDetails
+                    result:
+                      matchId: "NA1_1234567890"
+                      playerId: "summoner-123"
+                      gameMode: "CLASSIC"
+                      champion: "Ahri"
+                      kills: 5
+                      deaths: 3
+                      assists: 12
+                      win: true
+                playerStats:
+                  value:
+                    action: getPlayerStats
+                    result:
+                      playerId: "summoner-123"
+                      totalMatches: 10
+                      message: "Stats calculation logic to be implemented"
+        '400':
+          description: Invalid request or missing parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  availableActions:
+                    type: array
+                    items:
+                      type: string
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  details:
+                    type: string
+
+components:
+  schemas:
+    ToolRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [getPlayerMatches, getMatchDetails, getPlayerStats]
+        parameters:
+          type: object
+    
+    ToolResponse:
+      type: object
+      properties:
+        action:
+          type: string
+        result:
+          type: object
+    
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
