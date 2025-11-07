@@ -1,16 +1,31 @@
-## AWS Amplify Next.js (App Router) Starter Template
+# Rift Rewind Reviewer: Track, Reflect, Depart
 
-This repository provides a starter template for creating applications using Next.js (App Router) and AWS Amplify, emphasizing easy setup for authentication, API, and database capabilities.
+Personalized League of Legends insights powered by AWS AI services.
 
 ## Overview
 
-This template equips you with a foundational Next.js application integrated with AWS Amplify, streamlined for scalability and performance. It is ideal for developers looking to jumpstart their project with pre-configured AWS services like Cognito, AppSync, and DynamoDB.
+Rift Rewind Reviewer is a serverless application that analyzes your League of Legends match history and provides AI-powered insights to help you improve your gameplay. Built with Next.js and AWS services, it leverages Amazon Bedrock Agent for intelligent analysis.
+
+## Architecture
+
+**Serverless Architecture** using Next.js frontend and AWS CDK for infrastructure:
+
+- **Frontend**: Next.js with AWS Amplify hosting
+- **Storage**: Amazon S3 for match data
+- **Compute**: 3 AWS Lambda functions (API, Ingest, Tools)
+- **API**: Amazon API Gateway (REST)
+- **AI/ML**: Amazon Bedrock Agent (Orchestrator)
+- **Auth**: Amazon Cognito
+
+For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Features
 
-- **Authentication**: Setup with Amazon Cognito for secure user authentication.
-- **API**: Ready-to-use GraphQL endpoint with AWS AppSync.
-- **Database**: Real-time database powered by Amazon DynamoDB.
+- **AI-Powered Insights**: Natural language queries about your LoL performance
+- **Match Data Ingestion**: Store and organize match history
+- **Personalized Analysis**: Tailored recommendations based on your playstyle
+- **Serverless Scalability**: Automatic scaling with AWS Lambda
+- **Authentication**: Secure user authentication with Amazon Cognito
 
 ## Deploying to AWS
 

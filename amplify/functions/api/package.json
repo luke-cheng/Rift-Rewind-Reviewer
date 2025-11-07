@@ -1,0 +1,13 @@
+{
+  "name": "api-function",
+  "version": "1.0.0",
+  "description": "API Lambda function for Rift Rewind Reviewer",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.645.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^20"
+  }
+}
