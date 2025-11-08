@@ -1,25 +1,25 @@
-## AWS Amplify Next.js (App Router) Starter Template
+# Rift Rewind Reviewer - Track, Reflect, Develop
 
-This repository provides a starter template for creating applications using Next.js (App Router) and AWS Amplify, emphasizing easy setup for authentication, API, and database capabilities.
+> Submission for Rift [Rift Rewind Hackathon](https://riftrewind.devpost.com/)
 
 ## Overview
 
-This template equips you with a foundational Next.js application integrated with AWS Amplify, streamlined for scalability and performance. It is ideal for developers looking to jumpstart their project with pre-configured AWS services like Cognito, AppSync, and DynamoDB.
+A coaching service for League of Legends gameplay performance analyzer. Utilizes various AWS services to analyze player performance and provide coaching insights.
 
-## Features
+## Tech Stack
 
-- **Authentication**: Setup with Amazon Cognito for secure user authentication.
-- **API**: Ready-to-use GraphQL endpoint with AWS AppSync.
-- **Database**: Real-time database powered by Amazon DynamoDB.
+- **Frontend**: Next.js 14 with App Router
+- **Backend**: AWS Amplify Gen 2
+- **API**: AWS AppSync (GraphQL)
+- **Database**: Amazon DynamoDB
+- **Compute**: AWS Lambda
+- **AI/ML**: AWS Bedrock
+- **API Integration**: Riot Games API (Account v1, Match v5)
 
-## Deploying to AWS
+## Architecture
 
-For detailed instructions on deploying your application, refer to the [deployment section](https://docs.amplify.aws/nextjs/start/quickstart/nextjs-app-router-client-components/#deploy-a-fullstack-app-to-aws) of our documentation.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
 
-## Security
+## Riot API Integration
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
-
-## License
-
-This library is licensed under the MIT-0 License. See the LICENSE file.
+Comprehensive TypeScript DTOs for the Riot Games API. See [`types/riot-api/README.md`](types/riot-api/README.md) for API endpoints and types.
