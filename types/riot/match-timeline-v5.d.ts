@@ -327,7 +327,6 @@ export interface TimelineParticipantDto {
 /**
  * Lane Type
  * 
- * Based on actual ranked match data from Riot API.
  * Used in timeline events (different from match endpoint which uses TOP, JUNGLE, MIDDLE, BOTTOM).
  */
 export enum LaneType {
@@ -342,7 +341,6 @@ export enum LaneType {
 /**
  * Monster Type
  * 
- * Based on actual ranked match data from Riot API.
  */
 export enum MonsterType {
   /** Baron Nashor */
@@ -360,7 +358,6 @@ export enum MonsterType {
 /**
  * Monster Sub Type
  * 
- * Based on actual ranked match data from Riot API.
  * Only applies to DRAGON monster type.
  */
 export enum MonsterSubType {
@@ -383,7 +380,6 @@ export enum MonsterSubType {
 /**
  * Building Type
  * 
- * Based on actual ranked match data from Riot API.
  */
 export enum BuildingType {
   /** Tower building */
@@ -395,7 +391,6 @@ export enum BuildingType {
 /**
  * Tower Type
  * 
- * Based on actual ranked match data from Riot API.
  */
 export enum TowerType {
   /** Outer turret */
@@ -411,7 +406,6 @@ export enum TowerType {
 /**
  * Ward Type
  * 
- * Based on actual ranked match data from Riot API.
  */
 export enum WardType {
   /** Yellow trinket */
@@ -427,7 +421,6 @@ export enum WardType {
 /**
  * Kill Type
  * 
- * Based on actual ranked match data from Riot API.
  */
 export enum KillType {
   /** First blood kill */
@@ -441,7 +434,6 @@ export enum KillType {
 /**
  * Level Up Type
  * 
- * Based on actual ranked match data from Riot API.
  * EVOLVE may appear for champions with evolution mechanics (e.g., Kha'Zix, Kaisa).
  */
 export enum LevelUpType {

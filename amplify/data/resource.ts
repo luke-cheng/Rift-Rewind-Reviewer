@@ -1,15 +1,39 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any user authenticated via an API key can "create", "read",
-"update", and "delete" any "Todo" records.
-=========================================================================*/
 const schema = a.schema({
-  Todo: a
+  Match: a
     .model({
-      content: a.string(),
+      matchId: a.string().required(),
+      puuid: a.string().required(),
+      gameCreation: a.integer().required(),
+      matchData: a.json().required(),
+      region: a.string().required(),
+      processedAt: a.integer(),
+      aiInsights: a.json(),
+    })
+    .secondaryIndexes((index) => [
+      index("puuid").sortKeys(["gameCreation"]),
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  PlayerStat: a
+    .model({
+      puuid: a.string().required(),
+      region: a.string().required(),
+      riotId: a.json(),
+      totalMatches: a.integer(),
+      wins: a.integer(),
+      losses: a.integer(),
+      winRate: a.float(),
+      avgKDA: a.json(),
+      avgCS: a.float(),
+      avgDamage: a.float(),
+      avgVisionScore: a.float(),
+      championStats: a.json(),
+      roleStats: a.json(),
+      lastUpdated: a.integer(),
+      lastMatchFetched: a.integer(),
+      aiInsights: a.json(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });

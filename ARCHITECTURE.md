@@ -14,15 +14,17 @@ Public MVP for League of Legends gameplay performance analyzer. No authenticatio
 
 ---
 
-## Frontend
+## [Frontend](./app/README.md)
 
 ### Pages & Components
 
-**Player Search Page**
+**Navigation Bar with Player Search Component**
 
+- Integrated search component in the navbar (persistent across all pages)
 - Input: Riot ID (gameName + tagLine), region selector
 - Action: Calls `searchPlayer` mutation
 - Displays: Loading state, error handling, redirect to player stats
+- Always accessible from any page
 
 **Player Stats Dashboard**
 
@@ -42,7 +44,8 @@ Public MVP for League of Legends gameplay performance analyzer. No authenticatio
 ### Implementation
 
 - Remove auth UI components
-- Create player search form component
+- Create navigation bar component with integrated player search
+- Create player search form component (integrated in navbar)
 - Create stats visualization components (charts, tables)
 - Add region selector (AMERICAS, ASIA, EUROPE, SEA)
 - Handle loading and error states
@@ -50,10 +53,12 @@ Public MVP for League of Legends gameplay performance analyzer. No authenticatio
 
 **Files to Create/Modify**:
 
-- `app/page.tsx` - Player search page
+- `app/layout.tsx` - Root layout with navigation bar
+- `app/page.tsx` - Home/landing page
 - `app/player/[puuid]/page.tsx` - Player stats dashboard
 - `app/match/[matchId]/page.tsx` - Match details view
-- `components/PlayerSearch.tsx` - Search form component
+- `components/NavBar.tsx` - Navigation bar with integrated search
+- `components/PlayerSearch.tsx` - Search form component (used in navbar)
 - `components/StatsDashboard.tsx` - Stats visualization
 - `components/MatchHistory.tsx` - Match list component
 
@@ -376,7 +381,7 @@ type SyncResult {
 
 ### Initial Player Lookup
 
-1. User enters Riot ID (gameName + tagLine) and selects region
+1. User enters Riot ID (gameName + tagLine) and selects region in navbar search component
 2. Frontend calls `searchPlayer` mutation via AppSync
 3. AppSync resolver calls Lambda `fetchRiotData.getPUUID()`
 4. Lambda calls Riot API Account v1 endpoint
@@ -384,6 +389,7 @@ type SyncResult {
 6. AppSync checks DynamoDB for existing PlayerStats
 7. If missing or stale (>24 hours), triggers `syncPlayerMatches`
 8. Returns PlayerStat to frontend
+9. Frontend redirects to player stats dashboard page
 
 ### Match Synchronization
 
@@ -532,7 +538,8 @@ amplify/
   backend.ts
 
 app/
-  page.tsx (Player search)
+  layout.tsx (Root layout with navigation bar)
+  page.tsx (Home/landing page)
   player/
     [puuid]/
       page.tsx (Player stats dashboard)
@@ -541,7 +548,8 @@ app/
       page.tsx (Match details)
 
 components/
-  PlayerSearch.tsx
+  NavBar.tsx (Navigation bar with integrated player search)
+  PlayerSearch.tsx (Search form component, used in navbar)
   StatsDashboard.tsx
   MatchHistory.tsx
   MatchCard.tsx

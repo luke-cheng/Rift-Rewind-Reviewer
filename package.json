@@ -1,7 +1,21 @@
 {
-  "name": "aws-amplify-gen2",
+  "name": "rift-rewind-reviewer",
   "version": "0.1.0",
   "private": true,
+  "description": "Rift Rewind Reviewer - Track, Reflect, Develop. An AI-powered coaching service for League of Legends gameplay performance analyzer.",
+  "author": "Luke Cheng <lujia_cheng@outlook.com> (https://luke-cheng.github.io/)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/luke-cheng/rift-rewind-reviewer.git"
+  },
+  "homepage": "https://github.com/luke-cheng/rift-rewind-reviewer",
+  "keywords": [
+    "League of Legends",
+    "coaching",
+    "performance analyzer",
+    "rift-rewind-hackathon"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

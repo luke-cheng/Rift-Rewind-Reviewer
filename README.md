@@ -1,4 +1,4 @@
-# Rift Rewind Reviewer - Track, Reflect, Develop
+# Rift Rewind Reviewer - Track, Reflect, Develop
 
 > Submission for Rift [Rift Rewind Hackathon](https://riftrewind.devpost.com/)
 

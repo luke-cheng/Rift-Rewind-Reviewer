@@ -165,7 +165,6 @@ export enum ChampionTransform {
 /**
  * Lane Position
  * 
- * Based on actual ranked match data from Riot API.
  * The lane field represents the actual lane where the player spent most of their time.
  * Note: Lane does not include UTILITY or NONE - those are only in teamPosition/individualPosition.
  */
@@ -179,7 +178,6 @@ export enum Lane {
 /**
  * Team Position
  * 
- * Based on actual ranked match data from Riot API.
  * Team position is computed with the constraint that each team must have one of each position.
  * Can be empty string if position cannot be determined.
  */
@@ -194,7 +192,6 @@ export enum TeamPosition {
 /**
  * Individual Position
  * 
- * Based on actual ranked match data from Riot API.
  * Individual position is the best guess for which position the player actually played in isolation.
  * Can be empty string if position cannot be determined.
  */
@@ -209,7 +206,6 @@ export enum IndividualPosition {
 /**
  * Role
  * 
- * Based on actual ranked match data from Riot API.
  * Role represents the player's assigned role in the game.
  */
 export enum Role {
