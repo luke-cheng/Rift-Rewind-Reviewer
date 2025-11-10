@@ -49,6 +49,17 @@ function getRegionFromPlatform(platformId: RiotPlatformId): RiotRegion {
   return platformToRegion[platformId] || RiotRegion.AMERICAS;
 }
 
+/**
+ * Calculate Unix timestamp (in seconds) for 365 days ago
+ * Riot API expects timestamps in Unix seconds, not milliseconds
+ */
+function get365DaysAgoTimestamp(): number {
+  const now = Date.now(); // Milliseconds
+  const daysInMilliseconds = 365 * 24 * 60 * 60 * 1000; // 365 days in milliseconds
+  const timestamp365DaysAgo = now - daysInMilliseconds;
+  return Math.floor(timestamp365DaysAgo / 1000); // Convert to Unix seconds
+}
+
 export interface GetMatchHistoryOptions {
   /** PUUID of the player */
   puuid: string;
@@ -58,7 +69,11 @@ export interface GetMatchHistoryOptions {
   start?: number;
   /** Number of matches to return (default: 20, max: 100) */
   count?: number;
-  /** Start time (Unix timestamp in seconds) */
+  /** 
+   * Start time (Unix timestamp in seconds). 
+   * NOTE: This parameter is ignored - startTime is always hard-coded to 365 days ago.
+   * @deprecated This parameter is ignored and will be removed in a future version
+   */
   startTime?: number;
   /** End time (Unix timestamp in seconds) */
   endTime?: number;
@@ -144,6 +159,9 @@ export class RiotApiClient {
   /**
    * Get match IDs by PUUID
    * 
+   * Always fetches matches from the past 365 days (1 year).
+   * The startTime parameter is hard-coded to 365 days ago and cannot be overridden.
+   * 
    * @param options - Match history options
    * @returns Array of match IDs
    */
@@ -153,11 +171,14 @@ export class RiotApiClient {
       platformId,
       start = 0,
       count = 20,
-      startTime,
       endTime,
       queue,
       type,
     } = options;
+
+    // Hard code startTime to 365 days ago (always use this value)
+    // This ensures we only fetch match history from the past year
+    const startTime365DaysAgo = get365DaysAgoTimestamp();
 
     const platform = platformId || this.defaultPlatformId;
     const region = getRegionFromPlatform(platform);
@@ -168,7 +189,8 @@ export class RiotApiClient {
     // Add query parameters
     if (start !== undefined) url.searchParams.set('start', start.toString());
     if (count !== undefined) url.searchParams.set('count', count.toString());
-    if (startTime !== undefined) url.searchParams.set('startTime', startTime.toString());
+    // Always set startTime to 365 days ago (hard-coded)
+    url.searchParams.set('startTime', startTime365DaysAgo.toString());
     if (endTime !== undefined) url.searchParams.set('endTime', endTime.toString());
     if (queue !== undefined) url.searchParams.set('queue', queue.toString());
     if (type !== undefined) url.searchParams.set('type', type);

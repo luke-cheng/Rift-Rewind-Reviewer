@@ -8,7 +8,7 @@ import StatsDashboard from "@/components/StatsDashboard";
 import MatchHistory from "@/components/MatchHistory";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
-import { View, Text, Flex } from "@aws-amplify/ui-react";
+import { View, Text, Flex, Loader } from "@aws-amplify/ui-react";
 import { useToast } from "@/context/ToastContext";
 
 async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
@@ -45,36 +45,98 @@ async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
   }
 }
 
+async function checkIfMatchesExist(puuid: string): Promise<boolean> {
+  try {
+    const { data, errors } = await client.models.MatchParticipantIndex.list({
+      filter: { puuid: { eq: puuid } },
+      limit: 1,
+    });
+    return !errors && data && data.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function processPlayerMatches(puuid: string): Promise<boolean> {
+  try {
+    const { data, errors } = await client.mutations.processMatches({
+      puuid,
+      count: 20,
+    });
+    if (errors) {
+      return false;
+    }
+    // Check if the response indicates success
+    if (data && typeof data === 'object' && 'success' in data) {
+      return (data as any).success === true;
+    }
+    // If no errors, consider it successful
+    return true;
+  } catch (error) {
+    console.error("Error processing matches:", error);
+    return false;
+  }
+}
+
 export default function PlayerPage() {
   const params = useParams();
   const router = useRouter();
   const puuid = params?.puuid as string;
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { error: showError } = useToast();
+  const { error: showError, success: showSuccess } = useToast();
 
   useEffect(() => {
     if (!puuid) return;
 
-    setIsLoading(true);
-    setError(null);
+    const loadPlayerData = async () => {
+      setIsLoading(true);
+      setError(null);
 
-    fetchPlayerStats(puuid)
-      .then((data) => {
-        if (!data) {
-          setError("Failed to load player stats");
-          showError("Failed to load player stats");
+      try {
+        // Check if matches exist for this player
+        const matchesExist = await checkIfMatchesExist(puuid);
+        
+        // If no matches exist, process them
+        if (!matchesExist) {
+          setIsProcessing(true);
+          showSuccess("Fetching match data...");
+          
+          const processed = await processPlayerMatches(puuid);
+          
+          if (!processed) {
+            showError("Failed to fetch match data. Please try again.");
+            setIsProcessing(false);
+            setIsLoading(false);
+            return;
+          }
+          
+          showSuccess("Match data fetched successfully!");
         }
-        setPlayerStats(data);
+
+        // Fetch player stats
+        const stats = await fetchPlayerStats(puuid);
+        
+        if (!stats && !matchesExist) {
+          // Stats might not be available yet if processing just started
+          // Wait a bit and try again, or show loading state
+          setError("Processing player data. Please refresh in a moment.");
+        } else {
+          setPlayerStats(stats);
+        }
+      } catch (err) {
+        setError("Failed to load player data");
+        showError("Failed to load player data");
+      } finally {
         setIsLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to load player stats");
-        showError("Failed to load player stats");
-        setIsLoading(false);
-      });
-  }, [puuid, showError]);
+        setIsProcessing(false);
+      }
+    };
+
+    loadPlayerData();
+  }, [puuid, showError, showSuccess]);
 
   const handlePlayerSelect = (newPuuid: string) => {
     if (typeof window !== "undefined") {
@@ -83,7 +145,7 @@ export default function PlayerPage() {
     router.push(`/player/${newPuuid}`);
   };
 
-  if (isLoading) {
+  if (isLoading || isProcessing) {
     return (
       <View width="100%" minHeight="100vh" backgroundColor="background.primary">
         <Flex direction="column" minHeight="100vh">
@@ -99,7 +161,14 @@ export default function PlayerPage() {
             paddingBottom="large"
           >
             <View padding="large" textAlign="center">
-              <Text>Loading player stats...</Text>
+              <Flex direction="column" gap="medium" alignItems="center">
+                <Loader size="large" />
+                <Text>
+                  {isProcessing 
+                    ? "Fetching and processing match data..." 
+                    : "Loading player stats..."}
+                </Text>
+              </Flex>
             </View>
           </View>
           <Footer />

@@ -94,6 +94,7 @@ export default function MatchHistory({ puuid, year }: MatchHistoryProps) {
       .then((data) => {
         setMatches(data);
         setIsLoading(false);
+        // MatchCard components will automatically generate AI insights for matches that don't have them
       })
       .catch(() => {
         setError("Failed to load match history");

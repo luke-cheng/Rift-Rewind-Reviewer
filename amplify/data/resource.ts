@@ -131,7 +131,7 @@ const schema = a.schema({
     )
     .authorization((allow) => allow.guest()),
 
-  // AI Generation route for match insights, use for the match history page
+  // AI Generation route for match insights, use for the evaluation the match history page with multiple matches
   generateMatchInsights: a
     .generation({
       aiModel: a.ai.model("Claude 3.5 Haiku"),
@@ -152,7 +152,7 @@ const schema = a.schema({
     )
     .authorization((allow) => allow.guest()),
   
-  // AI Generation route for timeline insights, use for the match detail page
+  // AI Generation route for timeline insights, use for the individual match detail page
   generateTimelineInsights: a
     .generation({
       aiModel: a.ai.model("Claude 3.5 Haiku"),
