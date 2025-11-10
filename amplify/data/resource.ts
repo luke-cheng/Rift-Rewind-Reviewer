@@ -15,7 +15,7 @@ const schema = a.schema({
     .secondaryIndexes((index) => [
       index("gameCreation"),
     ])
-    .authorization((allow) => allow.guest()),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   MatchParticipantIndex: a
     .model({
@@ -52,7 +52,7 @@ const schema = a.schema({
       index("puuid").sortKeys(["gameCreation"]),
       index("matchId"),
     ])
-    .authorization((allow) => allow.guest()),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   PlayerStat: a
     .model({
@@ -73,7 +73,7 @@ const schema = a.schema({
       aiInsights: a.json(),
     })
     .identifier(["puuid"])
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   searchPlayer: a
     .query()
@@ -84,7 +84,7 @@ const schema = a.schema({
     })
     .returns(a.json())
     .handler(a.handler.function("riotApiFunction"))
-    .authorization((allow) => allow.guest()),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   fetchMatches: a
     .query()
@@ -95,7 +95,7 @@ const schema = a.schema({
     })
     .returns(a.json())
     .handler(a.handler.function("riotApiFunction"))
-    .authorization((allow) => allow.guest()),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   processMatches: a
     .mutation()
@@ -108,7 +108,7 @@ const schema = a.schema({
     })
     .returns(a.json())
     .handler(a.handler.function("dataProcessorFunction"))
-    .authorization((allow) => allow.guest()),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   // AI Generation route for player stats insights, use for player profile page
   generatePlayerInsights: a
@@ -129,7 +129,7 @@ const schema = a.schema({
         analysis: a.string(), // 2-3 sentence detailed analysis
       })
     )
-    .authorization((allow) => allow.guest()),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   // AI Generation route for match insights, use for the evaluation the match history page with multiple matches
   generateMatchInsights: a
@@ -150,7 +150,7 @@ const schema = a.schema({
         analysis: a.string(), // 2-3 sentence detailed analysis
       })
     )
-    .authorization((allow) => allow.guest()),
+    .authorization((allow) => [allow.publicApiKey()]),
   
   // AI Generation route for timeline insights, use for the individual match detail page
   generateTimelineInsights: a
@@ -175,7 +175,7 @@ const schema = a.schema({
       // Returns an array of timeline insights: Array<{ timestamp: number, severity: string, summary: string, analysis: string }>
       a.json()
     )
-    .authorization((allow) => allow.guest()),
+    .authorization((allow) => [allow.publicApiKey()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
