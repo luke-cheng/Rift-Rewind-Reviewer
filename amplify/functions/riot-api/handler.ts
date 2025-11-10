@@ -1,6 +1,6 @@
 import type { Handler } from 'aws-lambda';
 import { RiotApiClient } from './riot-api-client';
-import { RiotRegion, RiotPlatformId } from '../../types/riot';
+import { RiotRegion, RiotPlatformId } from './types/riot';
 
 if (!process.env.RIOT_API_KEY) {
   throw new Error('RIOT_API_KEY environment variable is required');
