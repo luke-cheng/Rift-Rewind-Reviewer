@@ -25,7 +25,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ConfigureAmplify />
         <ToastProvider>
-          {children}
+        {children}
           <ToastContainer />
         </ToastProvider>
       </body>

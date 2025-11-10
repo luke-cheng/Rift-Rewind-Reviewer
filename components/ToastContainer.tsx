@@ -92,7 +92,6 @@ export default function ToastContainer() {
       position="fixed"
       top="20px"
       right="20px"
-      zIndex={10000}
       style={{
         pointerEvents: "none",
       }}

@@ -18,26 +18,26 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
 
   const handleSearch = async (gameName: string, tagLine: string) => {
     setIsSearching(true);
-    try {
-      // Call the searchPlayer query through Amplify Gen 2
-      const { data, errors } = await client.queries.searchPlayer({
-        gameName,
-        tagLine,
-      });
+  try {
+    // Call the searchPlayer query through Amplify Gen 2
+    const { data, errors } = await client.queries.searchPlayer({
+      gameName,
+      tagLine,
+    });
 
-      if (errors || !data) {
+    if (errors || !data) {
         showError("Player not found. Please check the game name and tag line.");
         return;
-      }
+    }
 
-      // The searchPlayer query should return an object with puuid
-      // Based on the schema, it returns a.json(), so we need to parse it
+    // The searchPlayer query should return an object with puuid
+    // Based on the schema, it returns a.json(), so we need to parse it
       let puuid: string | null = null;
-      if (typeof data === 'object' && data !== null && 'puuid' in data) {
+    if (typeof data === 'object' && data !== null && 'puuid' in data) {
         puuid = (data as { puuid: string }).puuid;
       } else if (typeof data === 'string') {
         try {
-          const parsed = JSON.parse(data);
+      const parsed = JSON.parse(data);
           puuid = parsed.puuid || null;
         } catch {
           // Invalid JSON, will handle below
