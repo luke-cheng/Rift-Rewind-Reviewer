@@ -2,9 +2,9 @@ import type { Handler } from 'aws-lambda';
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../data/resource';
-import type { MatchDto, ParticipantDto, MatchInfoDto } from '../../../types/riot/match-v5';
+import type { MatchDto, ParticipantDto, MatchInfoDto } from '@/types/riot/match-v5';
 import { RiotApiClient } from '../riot-api/riot-api-client';
-import { RiotPlatformId } from '../../../types/riot';
+import { RiotPlatformId } from '@/types/riot';
 
 if (!process.env.DATA_GRAPHQL_ENDPOINT || !process.env.AWS_REGION) {
   throw new Error('Required environment variables missing: DATA_GRAPHQL_ENDPOINT, AWS_REGION');
