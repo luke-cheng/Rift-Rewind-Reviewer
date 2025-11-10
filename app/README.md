@@ -14,7 +14,7 @@ This fil is just for UI only. Integrate AI analytics into the StatsDashboard and
 
 - Use AWS Amplify UI `Badge` or custom component with `Icon`
 - Small icon badge in top-right corner of match cards
-- Visual: Sparkle/AI icon (only visible when `aiInsights` exists)
+- Visual: A `Badge` with the 1-3 words summary (only visible when `aiInsights` exists)
 - Use AWS Amplify UI theme tokens for colors based on severity
 - **Hover Behavior**:
   - Custom tooltip or `Popover` component that expands to the right into white space
@@ -58,6 +58,16 @@ This fil is just for UI only. Integrate AI analytics into the StatsDashboard and
 - Responsive: Full width on mobile, centered on desktop (built-in responsive utilities)
 - Match cards in vertical list using `Flex` with `direction="column"`
 - AI indicators on top-right of each card
+
+## Page
+
+### Home Page
+
+NavBar + stats dashboard+match histories + Footer
+
+### Match detail
+
+MatchDetailPage + Footer
 
 ## File Structure
 

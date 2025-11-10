@@ -36,7 +36,7 @@ export default function AIInsightIndicator({ insights }: AIInsightIndicatorProps
           transition: "opacity 0.2s",
         }}
       >
-        ✨
+        {insights.summary || "✨"}
       </Badge>
 
       <View

@@ -5,6 +5,8 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "@/amplify/data/resource";
 import StatsDashboard from "@/components/StatsDashboard";
 import MatchHistory from "@/components/MatchHistory";
+import NavBar from "@/components/NavBar";
+import Footer from "@/components/Footer";
 import { PlayerStats } from "@/components/types";
 import { View, Flex, Text } from "@aws-amplify/ui-react";
 
@@ -83,21 +85,41 @@ export default function HomePage() {
   };
 
   return (
-    <View maxWidth="1200px" margin="0 auto" width="100%">
-      <Flex direction="column" gap="large">
-        {selectedPuuid ? (
-          <>
-            <StatsDashboard stats={playerStats} isLoading={isLoading} />
-            <MatchHistory puuid={selectedPuuid} />
-          </>
-        ) : (
-          <View padding="large" textAlign="center">
-            <Text fontSize="lg">Search for a player to view their stats and match history</Text>
-            <Text color="font.secondary" marginTop="small">
-              Enter a player name in the format: gameName#tagLine
-            </Text>
-          </View>
-        )}
+    <View width="100%" minHeight="100vh" backgroundColor="background.primary">
+      <Flex direction="column" minHeight="100vh">
+        {/* NavBar */}
+        <NavBar onPlayerSelect={handlePlayerSelect} />
+
+        {/* Main content */}
+        <View
+          flex="1"
+          width="100%"
+          maxWidth="1200px"
+          margin="0 auto"
+          paddingLeft={{ base: "medium", large: "large" }}
+          paddingRight={{ base: "medium", large: "large" }}
+          paddingTop="large"
+          paddingBottom="large"
+        >
+          <Flex direction="column" gap="large">
+            {selectedPuuid ? (
+              <>
+                <StatsDashboard stats={playerStats} isLoading={isLoading} />
+                <MatchHistory puuid={selectedPuuid} />
+              </>
+            ) : (
+              <View padding="large" textAlign="center">
+                <Text fontSize="lg">Search for a player to view their stats and match history</Text>
+                <Text color="font.secondary" marginTop="small">
+                  Enter a player name in the format: gameName#tagLine
+                </Text>
+              </View>
+            )}
+          </Flex>
+        </View>
+
+        {/* Footer */}
+        <Footer />
       </Flex>
     </View>
   );

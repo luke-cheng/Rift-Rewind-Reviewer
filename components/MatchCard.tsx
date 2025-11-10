@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, Flex, Text, Badge, Button, Loader } from "@aws-amplify/ui-react";
 import { MatchParticipant, AIInsights } from "./types";
 import AIInsightIndicator from "./AIInsightIndicator";
+import AIMatchTag from "./AIMatchTag";
 import { useAIGeneration } from "@/lib/client";
 
 interface MatchCardProps {
@@ -70,22 +71,60 @@ export default function MatchCard({ match }: MatchCardProps) {
   const kdaDisplay = match.kda !== undefined ? match.kda.toFixed(2) : "N/A";
   const isGeneratingInsights = isGenerating || isLoading;
 
+  // Determine border accent color based on AI severity
+  const getBorderStyle = () => {
+    if (!insights || insights.severity === "no-issue") {
+      return {};
+    }
+    const borderColor = insights.severity === "warning" 
+      ? "var(--amplify-colors-orange-60)"
+      : "var(--amplify-colors-blue-60)";
+    return {
+      borderRight: `4px solid ${borderColor}`,
+    };
+  };
+
+  // Determine performance-based tags
+  const getPerformanceTags = () => {
+    const tags: Array<{ summary: string; severity: "info" | "warning" }> = [];
+    
+    // Long Game: >45 minutes (2700 seconds)
+    if (match.gameDuration && match.gameDuration > 2700) {
+      tags.push({ summary: "Long Game", severity: "info" });
+    }
+    
+    // Early Forfeit: <20 minutes (1200 seconds) - typical surrender/remake
+    if (match.gameDuration && match.gameDuration < 1200) {
+      tags.push({ summary: "Early Forfeit", severity: "warning" });
+    }
+    
+    return tags;
+  };
+
+  const performanceTags = getPerformanceTags();
+
   return (
     <Card
       variation="outlined"
       padding="medium"
       onClick={handleClick}
-      style={{ cursor: "pointer" }}
+      style={{ 
+        cursor: "pointer",
+        ...getBorderStyle(),
+      }}
     >
       <Flex direction="row" justifyContent="space-between" alignItems="center">
         <Flex direction="column" gap="small" flex="1">
-          <Flex direction="row" gap="small" alignItems="center">
+          <Flex direction="row" gap="small" alignItems="center" wrap="wrap">
             <Text fontWeight="bold">{match.championName || "Unknown"}</Text>
             {match.teamPosition && (
               <Text color="font.secondary" fontSize="small">
                 {match.teamPosition}
               </Text>
             )}
+            {performanceTags.map((tag, index) => (
+              <AIMatchTag key={index} summary={tag.summary} severity={tag.severity} />
+            ))}
           </Flex>
           <Text color="font.secondary" fontSize="small">
             {gameDate.toLocaleDateString()} {gameDate.toLocaleTimeString()}

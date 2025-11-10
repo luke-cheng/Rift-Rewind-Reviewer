@@ -4,7 +4,7 @@
 
 Submission for Rift [Rift Rewind Hackathon](https://riftrewind.devpost.com/) where we build an AI-powered agent using AWS AI services and a League API to help League of Legends players reflect, learn, and improve.
 
-## Requirement
+## Requirements
 
 Using League Developer AI end-of-game match data, you’ll create an intelligent agent that generates personalized end-of-year insights players can actually use. The agent should help answer the kinds of questions players ask themselves or potentially even share surprising insights — highlighting trends, compiling key statistics and achievements, identifying areas for growth, and generating engaging retrospectives for players to celebrate and reflect on their past year in League.
 
