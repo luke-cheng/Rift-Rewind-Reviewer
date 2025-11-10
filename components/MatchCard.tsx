@@ -7,6 +7,7 @@ import { MatchParticipant, AIInsights } from "./types";
 import AIInsightIndicator from "./AIInsightIndicator";
 import AIMatchTag from "./AIMatchTag";
 import { useAIGeneration } from "@/app/client";
+import { useToast } from "@/context/ToastContext";
 
 interface MatchCardProps {
   match: MatchParticipant;
@@ -16,6 +17,7 @@ export default function MatchCard({ match }: MatchCardProps) {
   const router = useRouter();
   const [insights, setInsights] = useState<AIInsights | undefined>(match.aiInsights);
   const [isGenerating, setIsGenerating] = useState(false);
+  const { error: showError } = useToast();
   
   const [{ data: generatedInsights, isLoading }, generateMatchInsights] = useAIGeneration("generateMatchInsights");
 
@@ -49,8 +51,8 @@ export default function MatchCard({ match }: MatchCardProps) {
           gameDuration: match.gameDuration,
         },
       });
-    } catch (error) {
-      console.error("Error generating insights:", error);
+    } catch {
+      showError("Failed to generate insights. Please try again.");
     } finally {
       setIsGenerating(false);
     }

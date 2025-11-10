@@ -5,6 +5,7 @@ import { View, Flex, Text, SelectField } from "@aws-amplify/ui-react";
 import { client } from "@/app/client";
 import { MatchParticipant } from "./types";
 import MatchCard from "./MatchCard";
+import { useToast } from "@/context/ToastContext";
 
 interface MatchHistoryProps {
   puuid: string;
@@ -37,7 +38,6 @@ async function fetchMatchHistory(puuid: string, year?: number): Promise<MatchPar
     });
 
     if (errors || !data) {
-      console.error("Error fetching match history:", errors);
       return [];
     }
 
@@ -72,8 +72,7 @@ async function fetchMatchHistory(puuid: string, year?: number): Promise<MatchPar
       processedAt: item.processedAt ?? undefined,
       aiInsights: item.aiInsights as MatchParticipant['aiInsights'],
     }));
-  } catch (error) {
-    console.error("Error fetching match history:", error);
+  } catch {
     return [];
   }
 }
@@ -83,6 +82,7 @@ export default function MatchHistory({ puuid, year }: MatchHistoryProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState(year || new Date().getFullYear());
   const [error, setError] = useState<string | null>(null);
+  const { error: showError } = useToast();
 
   useEffect(() => {
     if (!puuid) return;
@@ -95,12 +95,12 @@ export default function MatchHistory({ puuid, year }: MatchHistoryProps) {
         setMatches(data);
         setIsLoading(false);
       })
-      .catch((err) => {
-        console.error("Error fetching match history:", err);
+      .catch(() => {
         setError("Failed to load match history");
+        showError("Failed to load match history");
         setIsLoading(false);
       });
-  }, [puuid, selectedYear]);
+  }, [puuid, selectedYear, showError]);
 
   // Generate year options (current year and past few years)
   const currentYear = new Date().getFullYear();

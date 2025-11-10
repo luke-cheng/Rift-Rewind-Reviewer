@@ -6,6 +6,7 @@ import { Card, Flex, Text, View, Button, Loader } from "@aws-amplify/ui-react";
 import AIStatsComment from "./AIStatsComment";
 import { AIInsights, PlayerStats } from "./types";
 import { useAIGeneration } from "@/app/client";
+import { useToast } from "@/context/ToastContext";
 
 interface StatSectionProps {
   title: string;
@@ -26,6 +27,7 @@ export default function StatSection({
 }: StatSectionProps) {
   const [insights, setInsights] = useState<AIInsights | undefined>(initialInsights);
   const [isGenerating, setIsGenerating] = useState(false);
+  const { error: showError } = useToast();
   
   const [{ data: generatedInsights, isLoading }, generatePlayerInsights] = useAIGeneration("generatePlayerInsights");
 
@@ -67,8 +69,8 @@ export default function StatSection({
       await generatePlayerInsights({
         playerStats: statsToAnalyze,
       });
-    } catch (error) {
-      console.error("Error generating insights:", error);
+    } catch {
+      showError("Failed to generate insights. Please try again.");
     } finally {
       setIsGenerating(false);
     }

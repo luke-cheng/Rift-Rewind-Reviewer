@@ -9,6 +9,7 @@ import MatchHistory from "@/components/MatchHistory";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import { View, Text, Flex } from "@aws-amplify/ui-react";
+import { useToast } from "@/context/ToastContext";
 
 async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
   try {
@@ -18,7 +19,6 @@ async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
     });
 
     if (errors || !data) {
-      console.error("Error fetching player stats:", errors);
       return null;
     }
 
@@ -40,8 +40,7 @@ async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
       lastMatchFetched: data.lastMatchFetched ?? undefined,
       aiInsights: data.aiInsights as PlayerStats['aiInsights'],
     };
-  } catch (error) {
-    console.error("Error fetching player stats:", error);
+  } catch {
     return null;
   }
 }
@@ -53,6 +52,7 @@ export default function PlayerPage() {
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { error: showError } = useToast();
 
   useEffect(() => {
     if (!puuid) return;
@@ -62,15 +62,19 @@ export default function PlayerPage() {
 
     fetchPlayerStats(puuid)
       .then((data) => {
+        if (!data) {
+          setError("Failed to load player stats");
+          showError("Failed to load player stats");
+        }
         setPlayerStats(data);
         setIsLoading(false);
       })
-      .catch((err) => {
-        console.error("Error fetching player stats:", err);
+      .catch(() => {
         setError("Failed to load player stats");
+        showError("Failed to load player stats");
         setIsLoading(false);
       });
-  }, [puuid]);
+  }, [puuid, showError]);
 
   const handlePlayerSelect = (newPuuid: string) => {
     if (typeof window !== "undefined") {

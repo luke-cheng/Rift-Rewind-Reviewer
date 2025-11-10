@@ -4,6 +4,8 @@ import "./app.css";
 import "./globals.css";
 import "@aws-amplify/ui-react/styles.css";
 import { ConfigureAmplify } from "./ConfigureAmplify";
+import { ToastProvider } from "@/context/ToastContext";
+import ToastContainer from "@/components/ToastContainer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,7 +24,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ConfigureAmplify />
-        {children}
+        <ToastProvider>
+          {children}
+          <ToastContainer />
+        </ToastProvider>
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import { PlayerStats } from "@/components/types";
 import { View, Flex, Text } from "@aws-amplify/ui-react";
+import { useToast } from "@/context/ToastContext";
 
 async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
   try {
@@ -17,7 +18,6 @@ async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
     });
 
     if (errors || !data) {
-      console.error("Error fetching player stats:", errors);
       return null;
     }
 
@@ -39,8 +39,7 @@ async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
       lastMatchFetched: data.lastMatchFetched ?? undefined,
       aiInsights: data.aiInsights as PlayerStats['aiInsights'],
     };
-  } catch (error) {
-    console.error("Error fetching player stats:", error);
+  } catch {
     return null;
   }
 }
@@ -49,6 +48,7 @@ export default function HomePage() {
   const [selectedPuuid, setSelectedPuuid] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { error: showError } = useToast();
 
   useEffect(() => {
     // Check if there's a puuid in URL params or localStorage
@@ -61,15 +61,19 @@ export default function HomePage() {
       setSelectedPuuid(puuid);
       loadPlayerStats(puuid);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadPlayerStats = async (puuid: string) => {
     setIsLoading(true);
     try {
       const stats = await fetchPlayerStats(puuid);
+      if (!stats) {
+        showError("Failed to load player stats. Please try again.");
+      }
       setPlayerStats(stats);
-    } catch (error) {
-      console.error("Error loading player stats:", error);
+    } catch {
+      showError("Failed to load player stats. Please try again.");
     } finally {
       setIsLoading(false);
     }

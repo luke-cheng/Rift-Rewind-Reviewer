@@ -5,62 +5,55 @@ import { useRouter } from "next/navigation";
 import { View, Flex, Text } from "@aws-amplify/ui-react";
 import { client } from "@/app/client";
 import PlayerSearch from "./PlayerSearch";
+import { useToast } from "@/context/ToastContext";
 
 interface NavBarProps {
   onPlayerSelect?: (puuid: string) => void;
 }
 
-async function searchPlayer(gameName: string, tagLine: string): Promise<string | null> {
-  try {
-    // Call the searchPlayer query through Amplify Gen 2
-    const { data, errors } = await client.queries.searchPlayer({
-      gameName,
-      tagLine,
-    });
-
-    if (errors || !data) {
-      console.error("Error searching for player:", errors);
-      return null;
-    }
-
-    // The searchPlayer query should return an object with puuid
-    // Based on the schema, it returns a.json(), so we need to parse it
-    if (typeof data === 'object' && data !== null && 'puuid' in data) {
-      return (data as { puuid: string }).puuid;
-    }
-
-    // If data is a string, try to parse it
-    if (typeof data === 'string') {
-      const parsed = JSON.parse(data);
-      return parsed.puuid || null;
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Error searching for player:", error);
-    return null;
-  }
-}
-
 export default function NavBar({ onPlayerSelect }: NavBarProps) {
   const router = useRouter();
   const [isSearching, setIsSearching] = React.useState(false);
+  const { error: showError } = useToast();
 
   const handleSearch = async (gameName: string, tagLine: string) => {
     setIsSearching(true);
     try {
-      const puuid = await searchPlayer(gameName, tagLine);
+      // Call the searchPlayer query through Amplify Gen 2
+      const { data, errors } = await client.queries.searchPlayer({
+        gameName,
+        tagLine,
+      });
+
+      if (errors || !data) {
+        showError("Player not found. Please check the game name and tag line.");
+        return;
+      }
+
+      // The searchPlayer query should return an object with puuid
+      // Based on the schema, it returns a.json(), so we need to parse it
+      let puuid: string | null = null;
+      if (typeof data === 'object' && data !== null && 'puuid' in data) {
+        puuid = (data as { puuid: string }).puuid;
+      } else if (typeof data === 'string') {
+        try {
+          const parsed = JSON.parse(data);
+          puuid = parsed.puuid || null;
+        } catch {
+          // Invalid JSON, will handle below
+        }
+      }
+
       if (puuid) {
         if (onPlayerSelect) {
           onPlayerSelect(puuid);
         }
         router.push(`/player/${puuid}`);
       } else {
-        alert("Player not found. Please check the game name and tag line.");
+        showError("Player not found. Please check the game name and tag line.");
       }
     } catch (error) {
-      console.error("Error searching for player:", error);
-      alert("Error searching for player. Please try again.");
+      showError("Error searching for player. Please try again.");
     } finally {
       setIsSearching(false);
     }

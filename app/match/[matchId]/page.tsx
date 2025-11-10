@@ -8,6 +8,7 @@ import { View, Text, Card, Flex, Badge } from "@aws-amplify/ui-react";
 import AIInsightIndicator from "@/components/AIInsightIndicator";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
+import { useToast } from "@/context/ToastContext";
 
 async function fetchMatchDetails(matchId: string): Promise<MatchData | null> {
   try {
@@ -17,7 +18,6 @@ async function fetchMatchDetails(matchId: string): Promise<MatchData | null> {
     });
 
     if (errors || !data) {
-      console.error("Error fetching match details:", errors);
       return null;
     }
 
@@ -26,8 +26,7 @@ async function fetchMatchDetails(matchId: string): Promise<MatchData | null> {
     if (typeof data.matchData === 'string') {
       try {
         parsedMatchData = JSON.parse(data.matchData);
-      } catch (e) {
-        console.error("Error parsing matchData:", e);
+      } catch {
         parsedMatchData = null;
       }
     }
@@ -37,8 +36,7 @@ async function fetchMatchDetails(matchId: string): Promise<MatchData | null> {
     if (data.timelineData && typeof data.timelineData === 'string') {
       try {
         parsedTimelineData = JSON.parse(data.timelineData);
-      } catch (e) {
-        console.error("Error parsing timelineData:", e);
+      } catch {
         parsedTimelineData = null;
       }
     }
@@ -53,8 +51,7 @@ async function fetchMatchDetails(matchId: string): Promise<MatchData | null> {
       processedAt: data.processedAt ?? undefined,
       aiInsights: data.aiInsights as MatchData['aiInsights'],
     };
-  } catch (error) {
-    console.error("Error fetching match details:", error);
+  } catch {
     return null;
   }
 }
@@ -66,6 +63,7 @@ export default function MatchDetailPage() {
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { error: showError } = useToast();
 
   useEffect(() => {
     if (!matchId) return;
@@ -75,15 +73,19 @@ export default function MatchDetailPage() {
 
     fetchMatchDetails(matchId)
       .then((data) => {
+        if (!data) {
+          setError("Failed to load match details");
+          showError("Failed to load match details");
+        }
         setMatchData(data);
         setIsLoading(false);
       })
-      .catch((err) => {
-        console.error("Error fetching match details:", err);
+      .catch(() => {
         setError("Failed to load match details");
+        showError("Failed to load match details");
         setIsLoading(false);
       });
-  }, [matchId]);
+  }, [matchId, showError]);
 
   const handlePlayerSelect = (puuid: string) => {
     if (typeof window !== "undefined") {
