@@ -10,8 +10,8 @@ import type {
   MatchDto,
   MatchIdsDto,
   MatchTimelineDto,
-} from './types/riot';
-import { RiotRegion, RiotPlatformId } from './types/riot';
+} from '../../types/riot/index';
+import { RiotRegion, RiotPlatformId } from '../../types/riot/index';
 
 export interface RiotApiClientConfig {
   /** Riot API Key */
