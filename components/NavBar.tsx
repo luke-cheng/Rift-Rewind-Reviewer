@@ -20,14 +20,18 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
     setIsSearching(true);
     try {
       // Call the searchPlayer query through Amplify Gen 2
-      const { data, errors } = await client.queries.searchPlayer({
+      const response = await client.queries.searchPlayer({
         gameName,
         tagLine,
       });
 
+      // Log the full API response
+      console.error('API response from searchPlayer:', JSON.stringify(response, null, 2));
+
+      const { data, errors } = response;
+
       // Check for GraphQL errors
       if (errors) {
-        console.error('GraphQL errors:', JSON.stringify(errors, null, 2));
         showError("Player not found. Please check the game name and tag line.");
         return;
       }
@@ -35,7 +39,6 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
       // Check if data indicates an error response (wrapped error from handler)
       if (data && typeof data === 'object' && 'success' in data && (data as any).success === false) {
         const errorResponse = data as { success: false; error: any };
-        console.error('Error response from searchPlayer:', JSON.stringify(errorResponse, null, 2));
         
         // Show user-friendly error message
         if (errorResponse.error?.code === 'PLAYER_NOT_FOUND') {
@@ -47,7 +50,6 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
       }
 
       if (!data) {
-        console.error('No data returned from searchPlayer');
         showError("Player not found. Please check the game name and tag line.");
         return;
       }
@@ -72,10 +74,10 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
         }
         router.push(`/player/${puuid}`);
       } else {
-        console.error('No puuid found in response:', JSON.stringify(data, null, 2));
         showError("Player not found. Please check the game name and tag line.");
       }
     } catch (error) {
+      // Log the full error
       console.error('Unexpected error in handleSearch:', JSON.stringify(error, null, 2));
       showError("Error searching for player. Please try again.");
     } finally {

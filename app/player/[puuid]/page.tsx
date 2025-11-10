@@ -59,21 +59,24 @@ async function checkIfMatchesExist(puuid: string): Promise<boolean> {
 
 async function processPlayerMatches(puuid: string): Promise<{ success: boolean; error?: any }> {
   try {
-    const { data, errors } = await client.mutations.processMatches({
+    const response = await client.mutations.processMatches({
       puuid,
       count: 20,
     });
     
+    // Log the full API response
+    console.error('API response from processMatches:', JSON.stringify(response, null, 2));
+    
+    const { data, errors } = response;
+    
     // Check for GraphQL errors
     if (errors) {
-      console.error('GraphQL errors in processMatches:', JSON.stringify(errors, null, 2));
       return { success: false, error: { errors } };
     }
     
     // Check if the response indicates an error (wrapped error from handler)
     if (data && typeof data === 'object' && 'success' in data) {
       if ((data as any).success === false) {
-        console.error('Error response from processMatches:', JSON.stringify(data, null, 2));
         return { success: false, error: (data as any).error };
       }
       return { success: true };
@@ -82,6 +85,7 @@ async function processPlayerMatches(puuid: string): Promise<{ success: boolean; 
     // If no errors and no explicit success field, consider it successful
     return { success: true };
   } catch (error) {
+    // Log the full error
     console.error("Unexpected error processing matches:", JSON.stringify(error, null, 2));
     return { 
       success: false, 

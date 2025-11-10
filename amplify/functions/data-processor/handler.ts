@@ -58,7 +58,7 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
     const { puuid, matches, matchIds, count, platformId } = event.arguments;
     
     if (!puuid) {
-      return {
+      const errorResponse = {
         success: false,
         error: {
           message: 'Missing required argument: puuid',
@@ -70,6 +70,11 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
           timestamp: new Date().toISOString(),
         }
       };
+      
+      // Log the full error response
+      console.error('Error response from processMatches (missing argument):', JSON.stringify(errorResponse, null, 2));
+      
+      return errorResponse;
     }
     
     let matchesToProcess: MatchDto[] = [];
@@ -132,8 +137,7 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
         );
       } catch (error) {
         // If match history fetch fails, wrap and return error
-        console.error('Failed to fetch match history:', error);
-        return {
+        const errorResponse = {
           success: false,
           error: {
             message: error instanceof Error ? error.message : 'Failed to fetch match history',
@@ -147,6 +151,11 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
             timestamp: new Date().toISOString(),
           }
         };
+        
+        // Log the full error response
+        console.error('Error response from processMatches (match history fetch error):', JSON.stringify(errorResponse, null, 2));
+        
+        return errorResponse;
       }
     }
     
@@ -188,15 +197,8 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
       puuid,
     };
   } catch (error) {
-    console.error('Data processor error:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      puuid: event.arguments?.puuid,
-      timestamp: new Date().toISOString()
-    });
-    
     // Wrap error in response body instead of throwing
-    return {
+    const errorResponse = {
       success: false,
       error: {
         message: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -212,6 +214,11 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
         timestamp: new Date().toISOString(),
       }
     };
+    
+    // Log the full error response
+    console.error('Error response from processMatches:', JSON.stringify(errorResponse, null, 2));
+    
+    return errorResponse;
   }
 };
 

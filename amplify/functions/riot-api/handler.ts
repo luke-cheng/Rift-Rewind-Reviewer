@@ -53,15 +53,8 @@ export const handler: Handler<GraphQLQueryEvent, any> = async (event) => {
         // Return account data including puuid
         return account;
       } catch (error) {
-        console.error('Riot API error in searchPlayer:', {
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          args: event.arguments,
-          timestamp: new Date().toISOString()
-        });
-        
         // Wrap error in response body
-        return {
+        const errorResponse = {
           success: false,
           error: {
             message: error instanceof Error ? error.message : String(error),
@@ -75,6 +68,11 @@ export const handler: Handler<GraphQLQueryEvent, any> = async (event) => {
             timestamp: new Date().toISOString(),
           }
         };
+        
+        // Log the full error response
+        console.error('Error response from searchPlayer:', JSON.stringify(errorResponse, null, 2));
+        
+        return errorResponse;
       }
     }
     
@@ -89,15 +87,8 @@ export const handler: Handler<GraphQLQueryEvent, any> = async (event) => {
         });
         return matches;
       } catch (error) {
-        console.error('Riot API error in fetchMatches:', {
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          args: event.arguments,
-          timestamp: new Date().toISOString()
-        });
-        
         // Wrap error in response body
-        return {
+        const errorResponse = {
           success: false,
           error: {
             message: error instanceof Error ? error.message : String(error),
@@ -110,6 +101,11 @@ export const handler: Handler<GraphQLQueryEvent, any> = async (event) => {
             timestamp: new Date().toISOString(),
           }
         };
+        
+        // Log the full error response
+        console.error('Error response from fetchMatches:', JSON.stringify(errorResponse, null, 2));
+        
+        return errorResponse;
       }
     }
     
@@ -126,18 +122,14 @@ export const handler: Handler<GraphQLQueryEvent, any> = async (event) => {
         timestamp: new Date().toISOString(),
       }
     };
-    console.error('Invalid query arguments:', invalidArgsError);
+    
+    // Log the full error response
+    console.error('Error response from handler (invalid arguments):', JSON.stringify(invalidArgsError, null, 2));
+    
     return invalidArgsError;
   } catch (error) {
-    // Catch-all for unexpected errors
-    console.error('Unexpected error in Riot API handler:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      args: event.arguments,
-      timestamp: new Date().toISOString()
-    });
-    
-    return {
+    // Catch-all for unexpected errors - wrap in response body
+    const errorResponse = {
       success: false,
       error: {
         message: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -149,5 +141,10 @@ export const handler: Handler<GraphQLQueryEvent, any> = async (event) => {
         timestamp: new Date().toISOString(),
       }
     };
+    
+    // Log the full error response
+    console.error('Error response from handler (unexpected error):', JSON.stringify(errorResponse, null, 2));
+    
+    return errorResponse;
   }
 };
