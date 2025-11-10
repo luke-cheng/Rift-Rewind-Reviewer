@@ -58,7 +58,18 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
     const { puuid, matches, matchIds, count, platformId } = event.arguments;
     
     if (!puuid) {
-      throw new Error('Missing required argument: puuid');
+      return {
+        success: false,
+        error: {
+          message: 'Missing required argument: puuid',
+          code: 'MISSING_ARGUMENT',
+          statusCode: 400,
+          details: {
+            receivedArguments: Object.keys(event.arguments || {}),
+          },
+          timestamp: new Date().toISOString(),
+        }
+      };
     }
     
     let matchesToProcess: MatchDto[] = [];
@@ -87,37 +98,56 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
     // Otherwise, fetch match history and then match details
     else {
       console.log(`Fetching match history for puuid: ${puuid} (last 365 days)...`);
-      const matchIdsList = await riotClient.getMatchHistory({
-        puuid,
-        platformId: platformId as RiotPlatformId | undefined,
-        count: count || 20,
-        start: 0,
-        // startTime is automatically set to 365 days ago in riot-api-client
-      });
-      
-      if (!matchIdsList || matchIdsList.length === 0) {
-        return {
-          success: true,
-          processed: 0,
+      try {
+        const matchIdsList = await riotClient.getMatchHistory({
           puuid,
-          message: 'No matches found for this player in the last year',
+          platformId: platformId as RiotPlatformId | undefined,
+          count: count || 20,
+          start: 0,
+          // startTime is automatically set to 365 days ago in riot-api-client
+        });
+        
+        if (!matchIdsList || matchIdsList.length === 0) {
+          return {
+            success: true,
+            processed: 0,
+            puuid,
+            message: 'No matches found for this player in the last year',
+          };
+        }
+        
+        console.log(`Found ${matchIdsList.length} matches from the last year, fetching details...`);
+        matchesToProcess = await Promise.all(
+          matchIdsList.map(async (matchId: string) => {
+            try {
+              return await riotClient.getMatchDetails(
+                matchId,
+                platformId as RiotPlatformId | undefined
+              );
+            } catch (error) {
+              console.error(`Failed to fetch match ${matchId}:`, error);
+              throw error;
+            }
+          })
+        );
+      } catch (error) {
+        // If match history fetch fails, wrap and return error
+        console.error('Failed to fetch match history:', error);
+        return {
+          success: false,
+          error: {
+            message: error instanceof Error ? error.message : 'Failed to fetch match history',
+            code: 'MATCH_HISTORY_FETCH_ERROR',
+            statusCode: error instanceof Error && error.message.includes('404') ? 404 : 500,
+            details: {
+              puuid,
+              platformId,
+              count: count || 20,
+            },
+            timestamp: new Date().toISOString(),
+          }
         };
       }
-      
-      console.log(`Found ${matchIdsList.length} matches from the last year, fetching details...`);
-      matchesToProcess = await Promise.all(
-        matchIdsList.map(async (matchId: string) => {
-          try {
-            return await riotClient.getMatchDetails(
-              matchId,
-              platformId as RiotPlatformId | undefined
-            );
-          } catch (error) {
-            console.error(`Failed to fetch match ${matchId}:`, error);
-            throw error;
-          }
-        })
-      );
     }
     
     if (matchesToProcess.length === 0) {
@@ -160,11 +190,28 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
   } catch (error) {
     console.error('Data processor error:', {
       message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
       puuid: event.arguments?.puuid,
       timestamp: new Date().toISOString()
     });
     
-    throw new Error(`Failed to process matches: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Wrap error in response body instead of throwing
+    return {
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: 'DATA_PROCESSOR_ERROR',
+        statusCode: 500,
+        details: {
+          puuid: event.arguments?.puuid,
+          matches: event.arguments?.matches ? 'provided' : 'not provided',
+          matchIds: event.arguments?.matchIds ? event.arguments.matchIds.length : 0,
+          count: event.arguments?.count,
+          platformId: event.arguments?.platformId,
+        },
+        timestamp: new Date().toISOString(),
+      }
+    };
   }
 };
 

@@ -31,10 +31,8 @@ export default function HomePage() {
                 Track, Reflect, Develop
               </Text>
               <Text color="font.secondary" marginTop="medium">
-                Search for a player to view their stats and match history
-              </Text>
-              <Text color="font.secondary" fontSize="small">
-                Enter a player name in the format: gameName#tagLine
+                Enter a player GameName#tagLine to view their stats and match
+                history and gain AI insights.
               </Text>
             </Flex>
           </View>

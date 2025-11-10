@@ -1,5 +1,7 @@
 # Rift Rewind Reviewer - Track, Reflect, Develop
 
+> ! The demo link may not be available because the Riot Dev API expires in less than 24 hours. It is recommended to self-deploy to your own [AWS Amplify](https://docs.amplify.aws/nextjs/start/quickstart/nextjs-app-router-client-components/#deploy-a-fullstack-app-to-aws). And [set up your own riot api key](./SETUP_RIOT_API_KEY.md)
+
 ## Overview
 
 Submission for Rift [Rift Rewind Hackathon](https://riftrewind.devpost.com/) where we build an AI-powered agent using AWS AI services and a League API to help League of Legends players reflect, learn, and improve.

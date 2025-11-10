@@ -44,38 +44,110 @@ export const handler: Handler<GraphQLQueryEvent, any> = async (event) => {
     
     // Handle searchPlayer query
     if (args.gameName && args.tagLine) {
-      const account = await riotClient.getAccountByRiotId(
-        args.gameName,
-        args.tagLine,
-        args.region
-      );
-      // Return account data including puuid
-      return account;
+      try {
+        const account = await riotClient.getAccountByRiotId(
+          args.gameName,
+          args.tagLine,
+          args.region
+        );
+        // Return account data including puuid
+        return account;
+      } catch (error) {
+        console.error('Riot API error in searchPlayer:', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          args: event.arguments,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Wrap error in response body
+        return {
+          success: false,
+          error: {
+            message: error instanceof Error ? error.message : String(error),
+            code: error instanceof Error && error.message.includes('404') ? 'PLAYER_NOT_FOUND' : 'RIOT_API_ERROR',
+            statusCode: error instanceof Error && error.message.includes('404') ? 404 : 500,
+            details: {
+              gameName: args.gameName,
+              tagLine: args.tagLine,
+              region: args.region,
+            },
+            timestamp: new Date().toISOString(),
+          }
+        };
+      }
     }
     
     // Handle fetchMatches query
     if (args.puuid) {
-      const matches = await riotClient.getMatchHistory({
-        puuid: args.puuid,
-        platformId: args.platformId,
-        count: args.count || 20,
-        start: 0, // Always start from the beginning
-      });
-      return matches;
+      try {
+        const matches = await riotClient.getMatchHistory({
+          puuid: args.puuid,
+          platformId: args.platformId,
+          count: args.count || 20,
+          start: 0, // Always start from the beginning
+        });
+        return matches;
+      } catch (error) {
+        console.error('Riot API error in fetchMatches:', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          args: event.arguments,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Wrap error in response body
+        return {
+          success: false,
+          error: {
+            message: error instanceof Error ? error.message : String(error),
+            code: 'RIOT_API_ERROR',
+            statusCode: error instanceof Error && error.message.includes('404') ? 404 : 500,
+            details: {
+              puuid: args.puuid,
+              platformId: args.platformId,
+            },
+            timestamp: new Date().toISOString(),
+          }
+        };
+      }
     }
     
-    throw new Error('Invalid query arguments: Must provide either (gameName, tagLine) or (puuid)');
+    // Invalid arguments - wrap in error response
+    const invalidArgsError = {
+      success: false,
+      error: {
+        message: 'Invalid query arguments: Must provide either (gameName, tagLine) or (puuid)',
+        code: 'INVALID_ARGUMENTS',
+        statusCode: 400,
+        details: {
+          receivedArgs: Object.keys(args),
+        },
+        timestamp: new Date().toISOString(),
+      }
+    };
+    console.error('Invalid query arguments:', invalidArgsError);
+    return invalidArgsError;
   } catch (error) {
-    console.error('Riot API error:', {
+    // Catch-all for unexpected errors
+    console.error('Unexpected error in Riot API handler:', {
       message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
       args: event.arguments,
       timestamp: new Date().toISOString()
     });
     
-    if (error instanceof Error && error.message.includes('404')) {
-      throw new Error('Player not found');
-    }
-    
-    throw new Error('Failed to fetch data from Riot API');
+    return {
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: 'UNKNOWN_ERROR',
+        statusCode: 500,
+        details: {
+          args: event.arguments,
+        },
+        timestamp: new Date().toISOString(),
+      }
+    };
   }
 };

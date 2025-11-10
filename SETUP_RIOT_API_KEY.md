@@ -1,6 +1,6 @@
 # Setting Up Riot API Key in AWS Amplify
 
-Your Riot API function is configured to use a secret named `RIOT_API_KEY`. Here's how to set it up:
+The Riot API function is configured to use a secret named `RIOT_API_KEY`. Here's how to set it up:
 
 ## For Local Development (Sandbox)
 

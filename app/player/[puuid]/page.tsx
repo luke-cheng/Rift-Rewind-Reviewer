@@ -57,24 +57,39 @@ async function checkIfMatchesExist(puuid: string): Promise<boolean> {
   }
 }
 
-async function processPlayerMatches(puuid: string): Promise<boolean> {
+async function processPlayerMatches(puuid: string): Promise<{ success: boolean; error?: any }> {
   try {
     const { data, errors } = await client.mutations.processMatches({
       puuid,
       count: 20,
     });
+    
+    // Check for GraphQL errors
     if (errors) {
-      return false;
+      console.error('GraphQL errors in processMatches:', JSON.stringify(errors, null, 2));
+      return { success: false, error: { errors } };
     }
-    // Check if the response indicates success
+    
+    // Check if the response indicates an error (wrapped error from handler)
     if (data && typeof data === 'object' && 'success' in data) {
-      return (data as any).success === true;
+      if ((data as any).success === false) {
+        console.error('Error response from processMatches:', JSON.stringify(data, null, 2));
+        return { success: false, error: (data as any).error };
+      }
+      return { success: true };
     }
-    // If no errors, consider it successful
-    return true;
+    
+    // If no errors and no explicit success field, consider it successful
+    return { success: true };
   } catch (error) {
-    console.error("Error processing matches:", error);
-    return false;
+    console.error("Unexpected error processing matches:", JSON.stringify(error, null, 2));
+    return { 
+      success: false, 
+      error: { 
+        message: error instanceof Error ? error.message : 'Unknown error',
+        code: 'UNEXPECTED_ERROR'
+      } 
+    };
   }
 }
 
@@ -104,10 +119,12 @@ export default function PlayerPage() {
           setIsProcessing(true);
           showSuccess("Fetching match data...");
           
-          const processed = await processPlayerMatches(puuid);
+          const result = await processPlayerMatches(puuid);
           
-          if (!processed) {
-            showError("Failed to fetch match data. Please try again.");
+          if (!result.success) {
+            // Error response is already logged in processPlayerMatches
+            const errorMessage = result.error?.message || "Failed to fetch match data. Please try again.";
+            showError(errorMessage);
             setIsProcessing(false);
             setIsLoading(false);
             return;

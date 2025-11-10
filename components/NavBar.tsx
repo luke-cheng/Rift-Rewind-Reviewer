@@ -18,26 +18,48 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
 
   const handleSearch = async (gameName: string, tagLine: string) => {
     setIsSearching(true);
-  try {
-    // Call the searchPlayer query through Amplify Gen 2
-    const { data, errors } = await client.queries.searchPlayer({
-      gameName,
-      tagLine,
-    });
+    try {
+      // Call the searchPlayer query through Amplify Gen 2
+      const { data, errors } = await client.queries.searchPlayer({
+        gameName,
+        tagLine,
+      });
 
-    if (errors || !data) {
+      // Check for GraphQL errors
+      if (errors) {
+        console.error('GraphQL errors:', JSON.stringify(errors, null, 2));
         showError("Player not found. Please check the game name and tag line.");
         return;
-    }
+      }
 
-    // The searchPlayer query should return an object with puuid
-    // Based on the schema, it returns a.json(), so we need to parse it
+      // Check if data indicates an error response (wrapped error from handler)
+      if (data && typeof data === 'object' && 'success' in data && (data as any).success === false) {
+        const errorResponse = data as { success: false; error: any };
+        console.error('Error response from searchPlayer:', JSON.stringify(errorResponse, null, 2));
+        
+        // Show user-friendly error message
+        if (errorResponse.error?.code === 'PLAYER_NOT_FOUND') {
+          showError("Player not found. Please check the game name and tag line.");
+        } else {
+          showError(errorResponse.error?.message || "Error searching for player. Please try again.");
+        }
+        return;
+      }
+
+      if (!data) {
+        console.error('No data returned from searchPlayer');
+        showError("Player not found. Please check the game name and tag line.");
+        return;
+      }
+
+      // The searchPlayer query should return an object with puuid
+      // Based on the schema, it returns a.json(), so we need to parse it
       let puuid: string | null = null;
-    if (typeof data === 'object' && data !== null && 'puuid' in data) {
+      if (typeof data === 'object' && data !== null && 'puuid' in data) {
         puuid = (data as { puuid: string }).puuid;
       } else if (typeof data === 'string') {
         try {
-      const parsed = JSON.parse(data);
+          const parsed = JSON.parse(data);
           puuid = parsed.puuid || null;
         } catch {
           // Invalid JSON, will handle below
@@ -50,9 +72,11 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
         }
         router.push(`/player/${puuid}`);
       } else {
+        console.error('No puuid found in response:', JSON.stringify(data, null, 2));
         showError("Player not found. Please check the game name and tag line.");
       }
     } catch (error) {
+      console.error('Unexpected error in handleSearch:', JSON.stringify(error, null, 2));
       showError("Error searching for player. Please try again.");
     } finally {
       setIsSearching(false);

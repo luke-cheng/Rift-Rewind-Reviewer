@@ -9,11 +9,7 @@ This directory contains comprehensive TypeScript Data Transfer Objects (DTOs) fo
 ## Setup
 
 1. Get your Riot API key from [Riot Developer Portal](https://developer.riotgames.com/)
-2. Add your API key to your environment variables:
-
-   ```bash
-   RIOT_API_KEY=your_api_key_here
-   ```
+2. Add your API key to your environment variables.
 
 ## Usage
 
