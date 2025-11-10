@@ -216,7 +216,7 @@ export class RiotApiClient {
 
     // Fetch all matches in parallel (be mindful of rate limits)
     const matches = await Promise.all(
-      matchIds.map((matchId) => this.getMatchDetails(matchId, platformId))
+      matchIds.map((matchId: string) => this.getMatchDetails(matchId, platformId))
     );
 
     return matches;
