@@ -2,18 +2,22 @@
  * Riot Games API - Match-V5 DTOs
  * 
  * Documentation: https://developer.riotgames.com/apis#match-v5
+ * 
+ * Base URL: https://${region}.api.riotgames.com/
+ * Region: americas, asia, europe, sea
  */
 
 /**
- * Match IDs DTO - Response from GET /lol/match/v5/matches/by-puuid/{puuid}/ids
+ * 
+ * Match IDs DTO - Response from GET lol/match/v5/matches/by-puuid/{puuid}/ids
  * 
  * Returns a list of match IDs. Query parameters:
- * - start?: number (default: 0)
- * - count?: number (default: 20, max: 100)
- * - startTime?: number (Unix timestamp in seconds)
- * - endTime?: number (Unix timestamp in seconds)
- * - queue?: number (Queue ID filter)
- * - type?: string (Match type filter)
+ * - start?: number (Defaults to 0. Start index)
+ * - count?: number (	Defaults to 20. Valid values: 0 to 100. Number of match ids to return)
+ * - startTime?: number (Unix timestamp in secondsEpoch timestamp in seconds. The matchlist started storing timestamps on June 16th, 2021. Any matches played before June 16th, 2021 won't be included in the results if the startTime filter is set)
+ * - endTime?: number (Unix timestamp in secondsEpoch timestamp in seconds)
+ * - queue?: number (Filter the list of match ids by a specific queue id. This filter is mutually inclusive of the type filter meaning any match ids returned must match both the queue and type filters)
+ * - type?: string (Filter the list of match ids by the type of match. This filter is mutually inclusive of the queue filter meaning any match ids returned must match both the queue and type filters.)
  */
 export type MatchIdsDto = string[];
 

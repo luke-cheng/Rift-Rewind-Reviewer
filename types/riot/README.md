@@ -17,8 +17,6 @@ This directory contains comprehensive TypeScript Data Transfer Objects (DTOs) fo
 
 ## Usage
 
-
-
 ## Type Definitions
 
 All Riot API response types are available in this directory:
@@ -33,6 +31,8 @@ All Riot API response types are available in this directory:
 - `ParticipantFrameDto` - Participant state at specific timestamps
 
 ## API Endpoints Covered
+
+Base Url `https://${region}.api.riotgames.com/` where region can only be `americas`, `asia`, `europe`, `sea`
 
 ### Account-V1
 

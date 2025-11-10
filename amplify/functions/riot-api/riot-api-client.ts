@@ -22,6 +22,33 @@ export interface RiotApiClientConfig {
   defaultPlatformId?: RiotPlatformId;
 }
 
+/**
+ * Maps a platform ID to its corresponding regional routing endpoint
+ * Match-V5 API uses regional routing (americas, asia, europe, sea) not platform IDs
+ */
+function getRegionFromPlatform(platformId: RiotPlatformId): RiotRegion {
+  const platformToRegion: Record<RiotPlatformId, RiotRegion> = {
+    [RiotPlatformId.BR1]: RiotRegion.AMERICAS,
+    [RiotPlatformId.LA1]: RiotRegion.AMERICAS,
+    [RiotPlatformId.LA2]: RiotRegion.AMERICAS,
+    [RiotPlatformId.NA1]: RiotRegion.AMERICAS,
+    [RiotPlatformId.OC1]: RiotRegion.AMERICAS,
+    [RiotPlatformId.JP1]: RiotRegion.ASIA,
+    [RiotPlatformId.KR]: RiotRegion.ASIA,
+    [RiotPlatformId.PH2]: RiotRegion.ASIA,
+    [RiotPlatformId.SG2]: RiotRegion.ASIA,
+    [RiotPlatformId.TH2]: RiotRegion.ASIA,
+    [RiotPlatformId.TW2]: RiotRegion.ASIA,
+    [RiotPlatformId.VN2]: RiotRegion.ASIA,
+    [RiotPlatformId.EUN1]: RiotRegion.EUROPE,
+    [RiotPlatformId.EUW1]: RiotRegion.EUROPE,
+    [RiotPlatformId.RU]: RiotRegion.EUROPE,
+    [RiotPlatformId.TR1]: RiotRegion.EUROPE,
+  };
+  
+  return platformToRegion[platformId] || RiotRegion.AMERICAS;
+}
+
 export interface GetMatchHistoryOptions {
   /** PUUID of the player */
   puuid: string;
@@ -50,7 +77,7 @@ export class RiotApiClient {
   private defaultPlatformId: RiotPlatformId;
 
   private readonly ACCOUNT_API_BASE_URL = 'https://{region}.api.riotgames.com/riot/account/v1';
-  private readonly MATCH_API_BASE_URL = 'https://{platform}.api.riotgames.com/lol/match/v5';
+  private readonly MATCH_API_BASE_URL = 'https://{region}.api.riotgames.com/lol/match/v5';
 
   constructor(config: RiotApiClientConfig) {
     this.apiKey = config.apiKey;
@@ -133,8 +160,9 @@ export class RiotApiClient {
     } = options;
 
     const platform = platformId || this.defaultPlatformId;
+    const region = getRegionFromPlatform(platform);
     const url = new URL(
-      `${this.MATCH_API_BASE_URL.replace('{platform}', platform)}/matches/by-puuid/${puuid}/ids`
+      `${this.MATCH_API_BASE_URL.replace('{region}', region)}/matches/by-puuid/${puuid}/ids`
     );
 
     // Add query parameters
@@ -170,7 +198,8 @@ export class RiotApiClient {
     platformId?: RiotPlatformId
   ): Promise<MatchDto> {
     const platform = platformId || this.defaultPlatformId;
-    const url = `${this.MATCH_API_BASE_URL.replace('{platform}', platform)}/matches/${matchId}`;
+    const region = getRegionFromPlatform(platform);
+    const url = `${this.MATCH_API_BASE_URL.replace('{region}', region)}/matches/${matchId}`;
     
     const response = await fetch(url, {
       headers: {
@@ -246,7 +275,8 @@ export class RiotApiClient {
     platformId?: RiotPlatformId
   ): Promise<MatchTimelineDto> {
     const platform = platformId || this.defaultPlatformId;
-    const url = `${this.MATCH_API_BASE_URL.replace('{platform}', platform)}/matches/${matchId}/timeline`;
+    const region = getRegionFromPlatform(platform);
+    const url = `${this.MATCH_API_BASE_URL.replace('{region}', region)}/matches/${matchId}/timeline`;
     
     const response = await fetch(url, {
       headers: {
@@ -283,6 +313,16 @@ export class RiotApiClient {
     ]);
 
     return { match, timeline };
+  }
+
+  /**
+   * Get region from platform ID (public helper method)
+   * 
+   * @param platformId - Platform ID
+   * @returns Corresponding region for API routing
+   */
+  getRegionFromPlatform(platformId: RiotPlatformId): RiotRegion {
+    return getRegionFromPlatform(platformId);
   }
 }
 

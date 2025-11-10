@@ -46,7 +46,7 @@ async function fetchMatchHistory(puuid: string, year?: number): Promise<MatchPar
 
     // Map the data to MatchParticipant interface
     return data.map((item) => ({
-      id: item.id || `${item.puuid}-${item.matchId}`,
+      id: item.matchId || `${item.puuid}-${item.matchId}`,
       puuid: item.puuid,
       matchId: item.matchId,
       gameCreation: item.gameCreation,
@@ -62,6 +62,16 @@ async function fetchMatchHistory(puuid: string, year?: number): Promise<MatchPar
       teamPosition: item.teamPosition ?? undefined,
       queueId: item.queueId ?? undefined,
       gameMode: item.gameMode ?? undefined,
+      totalDamageDealt: item.totalDamageDealt ?? undefined,
+      totalDamageDealtToChampions: item.totalDamageDealtToChampions ?? undefined,
+      totalMinionsKilled: item.totalMinionsKilled ?? undefined,
+      visionScore: item.visionScore ?? undefined,
+      goldEarned: item.goldEarned ?? undefined,
+      goldSpent: item.goldSpent ?? undefined,
+      timePlayed: item.timePlayed ?? undefined,
+      totalTimeSpentDead: item.totalTimeSpentDead ?? undefined,
+      teamId: item.teamId ?? undefined,
+      gameDuration: item.gameDuration ?? undefined,
       processedAt: item.processedAt ?? undefined,
       aiInsights: item.aiInsights as MatchParticipant['aiInsights'],
     }));

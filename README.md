@@ -82,40 +82,19 @@ See [Frontend Documentation](./app/README.md)
 
 #### Fetching External API
 
-1. **Account Lookup**: Use Riot API Client to fetch player account by Riot ID (gameName + tagLine) from Account v1 API
-
-   - Endpoint: `GET /riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}`
-   - Returns: Account information including PUUID (unique player identifier)
-   - Region: Uses routing region (AMERICAS, ASIA, EUROPE) based on player's region
-
-2. **Match History**: Fetch match IDs using player's PUUID from Match v5 API
-
-   - Endpoint: `GET /lol/match/v5/matches/by-puuid/{puuid}/ids`
-   - Parameters: `start`, `count`, `startTime`, `endTime`, `queue`, `type`
-   - Platform: Uses specific platform ID (e.g., NA1, EUW1) based on player's region
-   - Returns: Array of match IDs (up to 100 matches per request)
-
-3. **Match Details**: Fetch detailed match data for each match ID
-
-   - Endpoint: `GET /lol/match/v5/matches/{matchId}`
-   - Returns: Complete match information including participant stats, team performance, objectives, etc.
-   - Used for: Calculating performance metrics, champion performance, role performance
-
-4. **Match Timeline** (Optional): Fetch frame-by-frame match timeline data for advanced analysis
-   - Endpoint: `GET /lol/match/v5/matches/{matchId}/timeline`
-   - Returns: Time-series data of events (kills, item purchases, skill level ups, etc.)
-   - Used for: Detailed gameplay analysis, event tracking, position analysis
-
-**API Client**: The Riot API client is located in [`amplify/functions/riot-api/riot-api-client.ts`](./amplify/functions/riot-api/riot-api-client.ts) and is used by Lambda function handlers. Frontend code uses Amplify Gen 2 GraphQL queries to interact with the backend.
+See [Riot API](./types/riot/README.md)
 
 **Rate Limiting**: Riot API has rate limits (Personal API Key: 100 requests per 2 minutes). Implementing:
 
 - Request queuing/batching
 - Response caching in DynamoDB
 
-### AWS Bedrock AI analysis
+### AWS Bedrock AI Analysis
 
-Send list of match historys or timeline (for individual match) to the Bedrock agent for deep dive, return result append to frontend `aiInsight`
+- Send a player's whole year match history with basic stats to the AI coach. The AI coach can identify patterns, such as performance declining after extended play sessions.
+- For each match, the AI coach provides deeper timeline-based analysis, appending insights to specific timestamps.
+
+The analysis results are added to the frontend in the `aiInsight` field.
 
 ### AWS Amplify Gen 2 Hosting
 

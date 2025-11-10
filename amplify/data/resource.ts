@@ -34,9 +34,20 @@ const schema = a.schema({
       teamPosition: a.string(),
       queueId: a.integer(),
       gameMode: a.string(),
+      totalDamageDealt: a.integer(),
+      totalDamageDealtToChampions: a.integer(),
+      totalMinionsKilled: a.integer(),
+      visionScore: a.integer(),
+      goldEarned: a.integer(),
+      goldSpent: a.integer(),
+      timePlayed: a.integer(),
+      totalTimeSpentDead: a.integer(),
+      teamId: a.integer(),
+      gameDuration: a.integer(),
       processedAt: a.integer(),
       aiInsights: a.json(),
     })
+    .identifier(["puuid", "matchId"])
     .secondaryIndexes((index) => [
       index("puuid").sortKeys(["gameCreation"]),
       index("matchId"),
@@ -69,6 +80,7 @@ const schema = a.schema({
     .arguments({
       gameName: a.string().required(),
       tagLine: a.string().required(),
+      region: a.string(),
     })
     .returns(a.json())
     .handler(a.handler.function("riotApiFunction"))
@@ -79,6 +91,7 @@ const schema = a.schema({
     .arguments({
       puuid: a.string().required(),
       count: a.integer(),
+      platformId: a.string(),
     })
     .returns(a.json())
     .handler(a.handler.function("riotApiFunction"))
@@ -88,7 +101,10 @@ const schema = a.schema({
     .mutation()
     .arguments({
       puuid: a.string().required(),
-      matches: a.json().required(),
+      matches: a.json(), // Optional: if provided, will use these matches instead of fetching
+      matchIds: a.json(), // Optional: array of match IDs to fetch
+      count: a.integer(), // Optional: number of matches to fetch (default: 20)
+      platformId: a.string(), // Optional: platform ID for Riot API
     })
     .returns(a.json())
     .handler(a.handler.function("dataProcessorFunction"))

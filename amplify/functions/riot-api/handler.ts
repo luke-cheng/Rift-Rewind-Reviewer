@@ -2,8 +2,12 @@ import type { Handler } from 'aws-lambda';
 import { RiotApiClient } from './riot-api-client';
 import { RiotRegion, RiotPlatformId } from '../../../types/riot';
 
+if (!process.env.RIOT_API_KEY) {
+  throw new Error('RIOT_API_KEY environment variable is required');
+}
+
 const riotClient = new RiotApiClient({
-  apiKey: process.env.RIOT_API_KEY!,
+  apiKey: process.env.RIOT_API_KEY,
 });
 
 /**
@@ -62,8 +66,16 @@ export const handler: Handler<GraphQLQueryEvent, any> = async (event) => {
     
     throw new Error('Invalid query arguments: Must provide either (gameName, tagLine) or (puuid)');
   } catch (error) {
-    console.error('Riot API error:', error);
-    // Throw error to let Amplify Gen 2 handle it properly
-    throw error;
+    console.error('Riot API error:', {
+      message: error instanceof Error ? error.message : String(error),
+      args: event.arguments,
+      timestamp: new Date().toISOString()
+    });
+    
+    if (error instanceof Error && error.message.includes('404')) {
+      throw new Error('Player not found');
+    }
+    
+    throw new Error('Failed to fetch data from Riot API');
   }
 };

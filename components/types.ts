@@ -33,6 +33,16 @@ export interface MatchParticipant {
   teamPosition?: string;
   queueId?: number;
   gameMode?: string;
+  totalDamageDealt?: number;
+  totalDamageDealtToChampions?: number;
+  totalMinionsKilled?: number;
+  visionScore?: number;
+  goldEarned?: number;
+  goldSpent?: number;
+  timePlayed?: number;
+  totalTimeSpentDead?: number;
+  teamId?: number;
+  gameDuration?: number;
   processedAt?: number;
   aiInsights?: AIInsights;
 }
