@@ -52,6 +52,8 @@ export default function StatsDashboard({ stats, isLoading }: StatsDashboardProps
           <StatSection
             title="Win Rate"
             aiInsights={stats.aiInsights?.severity !== "no-issue" ? stats.aiInsights : undefined}
+            playerStats={stats}
+            statType="winRate"
           >
             <Text fontSize="3xl" fontWeight="bold">
               {winRate}%
@@ -61,7 +63,11 @@ export default function StatsDashboard({ stats, isLoading }: StatsDashboardProps
             </Text>
           </StatSection>
 
-          <StatSection title="Average KDA">
+          <StatSection 
+            title="Average KDA"
+            playerStats={stats}
+            statType="kda"
+          >
             {stats.avgKDA ? (
               <>
                 <Text fontSize="3xl" fontWeight="bold">
@@ -77,7 +83,11 @@ export default function StatsDashboard({ stats, isLoading }: StatsDashboardProps
             )}
           </StatSection>
 
-          <StatSection title="Average CS">
+          <StatSection 
+            title="Average CS"
+            playerStats={stats}
+            statType="cs"
+          >
             {stats.avgCS ? (
               <>
                 <Text fontSize="3xl" fontWeight="bold">
@@ -92,7 +102,11 @@ export default function StatsDashboard({ stats, isLoading }: StatsDashboardProps
             )}
           </StatSection>
 
-          <StatSection title="Average Vision Score">
+          <StatSection 
+            title="Average Vision Score"
+            playerStats={stats}
+            statType="vision"
+          >
             {stats.avgVisionScore ? (
               <>
                 <Text fontSize="3xl" fontWeight="bold">

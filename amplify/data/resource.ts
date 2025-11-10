@@ -109,6 +109,48 @@ const schema = a.schema({
     .returns(a.json())
     .handler(a.handler.function("dataProcessorFunction"))
     .authorization((allow) => [allow.guest()]),
+
+  // AI Generation route for player stats insights
+  generatePlayerInsights: a
+    .generation({
+      aiModel: a.ai.model("Claude 3.5 Haiku"),
+      systemPrompt: `You are an expert League of Legends coach analyzing player performance statistics. 
+      Analyze the provided player statistics and generate actionable insights. 
+      Focus on identifying strengths, weaknesses, and areas for improvement.
+      Return insights in a structured format with severity level, summary, and detailed analysis.`,
+    })
+    .arguments({
+      playerStats: a.json().required(), // Player statistics data
+    })
+    .returns(
+      a.customType({
+        severity: a.string(), // "no-issue" | "info" | "warning"
+        summary: a.string(), // 2-4 word summary
+        analysis: a.string(), // 2-3 sentence detailed analysis
+      })
+    )
+    .authorization((allow) => [allow.guest()]),
+
+  // AI Generation route for match insights
+  generateMatchInsights: a
+    .generation({
+      aiModel: a.ai.model("Claude 3.5 Haiku"),
+      systemPrompt: `You are an expert League of Legends coach analyzing individual match performance. 
+      Analyze the provided match data and generate actionable insights about the player's performance in this specific match.
+      Focus on key moments, decision-making, and specific areas for improvement.
+      Return insights in a structured format with severity level, summary, and detailed analysis.`,
+    })
+    .arguments({
+      matchData: a.json().required(), // Match participant data
+    })
+    .returns(
+      a.customType({
+        severity: a.string(), // "no-issue" | "info" | "warning"
+        summary: a.string(), // 2-4 word summary
+        analysis: a.string(), // 2-3 sentence detailed analysis
+      })
+    )
+    .authorization((allow) => [allow.guest()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
