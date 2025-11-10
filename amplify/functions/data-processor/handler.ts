@@ -1,112 +1,87 @@
-import type { APIGatewayProxyHandler } from 'aws-lambda';
+import type { Handler } from 'aws-lambda';
+import { Amplify } from 'aws-amplify';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../data/resource';
 
-// GraphQL API endpoint and API key are injected as environment variables
-// These should be configured in the function resource or through Amplify's automatic injection
-// when the function is granted access to the data resource
-const GRAPHQL_ENDPOINT = process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT || process.env.GRAPHQL_ENDPOINT;
-const API_KEY = process.env.AMPLIFY_DATA_API_KEY || process.env.API_KEY;
-
-// Helper function to execute GraphQL mutations/queries
-async function executeGraphQL(query: string, variables: Record<string, any>): Promise<any> {
-  if (!GRAPHQL_ENDPOINT) {
-    throw new Error('GraphQL endpoint not configured. Set AMPLIFY_DATA_GRAPHQL_ENDPOINT environment variable.');
+Amplify.configure({
+  API: {
+    GraphQL: {
+      endpoint: process.env.DATA_GRAPHQL_ENDPOINT!,
+      region: process.env.AWS_REGION!,
+      defaultAuthMode: 'apiKey'
+    }
   }
+});
 
-  // Prepare headers - use API key if available, otherwise rely on IAM authentication
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+const client = generateClient<Schema>();
+
+/**
+ * Amplify Gen 2 GraphQL Mutation Handler
+ * 
+ * Handles processMatches mutation:
+ * - Processes match data and stores in MatchCache and MatchParticipantIndex
+ */
+interface GraphQLMutationEvent {
+  arguments: {
+    puuid: string;
+    matches: any; // Array of match data
   };
-
-  // If API key is available, use it for authentication
-  // Otherwise, rely on IAM role permissions (requires proper IAM setup)
-  if (API_KEY) {
-    headers['x-api-key'] = API_KEY;
-  }
-
-  const response = await fetch(GRAPHQL_ENDPOINT, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      query,
-      variables,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`GraphQL request failed: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  const result = await response.json();
-  if (result.errors) {
-    throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
-  }
-
-  return result.data;
+  identity?: any;
+  source?: any;
+  request?: any;
+  prev?: any;
+  info?: any;
 }
 
-export const handler: APIGatewayProxyHandler = async (event) => {
-  const { body } = event;
-  
+export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
   try {
-    const { action, data } = JSON.parse(body || '{}');
+    const { puuid, matches } = event.arguments;
     
-    switch (action) {
-      case 'processMatch':
-        return await processMatch(data);
-      case 'updatePlayerStats':
-        return await updatePlayerStats(data);
-      case 'cacheMatch':
-        return await cacheMatch(data);
-      default:
-        return { statusCode: 400, body: JSON.stringify({ error: 'Invalid action' }) };
+    if (!puuid || !matches) {
+      throw new Error('Missing required arguments: puuid and matches');
     }
+    
+    // Process each match
+    const results = await Promise.all(
+      matches.map(async (matchData: any) => {
+        return await processMatch(matchData);
+      })
+    );
+    
+    return {
+      success: true,
+      processed: results.length,
+      puuid,
+    };
   } catch (error) {
     console.error('Data processor error:', error);
-    return { 
-      statusCode: 500, 
-      body: JSON.stringify({ error: 'Processing failed', details: error instanceof Error ? error.message : String(error) }) 
-    };
+    // Throw error to let Amplify Gen 2 handle it properly
+    throw error;
   }
 };
 
 async function processMatch(matchData: any) {
-  const { matchId, gameCreation, participants } = matchData;
+  const { matchId, gameCreation, participants, info } = matchData;
   
-  // Create match cache using GraphQL mutation
-  const createMatchCacheMutation = `
-    mutation CreateMatchCache($input: CreateMatchCacheInput!) {
-      createMatchCache(input: $input) {
-        matchId
-      }
-    }
-  `;
+  if (!matchId || !gameCreation || !participants) {
+    throw new Error('Invalid match data: missing required fields');
+  }
   
-  await executeGraphQL(createMatchCacheMutation, {
-    input: {
+  // Store match in MatchCache
+  await client.models.MatchCache.create({
     matchId,
     gameCreation,
-      matchData: matchData, // JSON fields store objects directly
+    matchData: matchData, // Store full match data as JSON
     processedAt: Date.now(),
-    },
   });
   
-  // Create participant index entries using GraphQL mutations
-  const createParticipantIndexMutation = `
-    mutation CreateMatchParticipantIndex($input: CreateMatchParticipantIndexInput!) {
-      createMatchParticipantIndex(input: $input) {
-        id
-      }
-    }
-  `;
-  
-  for (const participant of participants) {
+  // Store each participant in MatchParticipantIndex
+  const participantPromises = participants.map(async (participant: any) => {
     const kda = participant.deaths > 0 
       ? (participant.kills + participant.assists) / participant.deaths 
       : participant.kills + participant.assists;
     
-    await executeGraphQL(createParticipantIndexMutation, {
-      input: {
+    return client.models.MatchParticipantIndex.create({
       puuid: participant.puuid,
       matchId,
       gameCreation,
@@ -114,63 +89,19 @@ async function processMatch(matchData: any) {
       kills: participant.kills,
       deaths: participant.deaths,
       assists: participant.assists,
-        kda,
+      kda,
       championId: participant.championId,
       championName: participant.championName,
+      lane: participant.lane,
+      role: participant.role,
       teamPosition: participant.teamPosition,
+      queueId: info?.queueId,
+      gameMode: info?.gameMode,
       processedAt: Date.now(),
-      },
     });
-  }
-  
-  return { statusCode: 200, body: JSON.stringify({ success: true }) };
-}
-
-async function updatePlayerStats(playerData: any) {
-  const { puuid, stats } = playerData;
-  
-  // Update player stats using GraphQL mutation
-  const updatePlayerStatMutation = `
-    mutation UpdatePlayerStat($input: UpdatePlayerStatInput!) {
-      updatePlayerStat(input: $input) {
-        puuid
-      }
-    }
-  `;
-  
-  await executeGraphQL(updatePlayerStatMutation, {
-    input: {
-    puuid,
-    ...stats,
-    lastUpdated: Date.now(),
-    },
   });
   
-  return { statusCode: 200, body: JSON.stringify({ success: true }) };
-}
-
-async function cacheMatch(matchData: any) {
-  const { matchId, gameCreation, data } = matchData;
+  await Promise.all(participantPromises);
   
-  // Create match cache using GraphQL mutation
-  const createMatchCacheMutation = `
-    mutation CreateMatchCache($input: CreateMatchCacheInput!) {
-      createMatchCache(input: $input) {
-        matchId
-      }
-    }
-  `;
-  
-  // Store JSON object directly without stringification
-  await executeGraphQL(createMatchCacheMutation, {
-    input: {
-    matchId,
-    gameCreation,
-      matchData: data, // JSON fields store objects directly
-    processedAt: Date.now(),
-    expiresAt: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days TTL
-    },
-  });
-  
-  return { statusCode: 200, body: JSON.stringify({ success: true }) };
+  return { matchId, success: true };
 }

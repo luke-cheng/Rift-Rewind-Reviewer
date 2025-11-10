@@ -17,51 +17,7 @@ This directory contains comprehensive TypeScript Data Transfer Objects (DTOs) fo
 
 ## Usage
 
-### Using the API Client
 
-```typescript
-import { createRiotApiClient } from '@/lib/riot-api-client';
-import { RiotRegion, RiotPlatformId } from '@/types/riot';
-
-// Initialize the client
-const riotClient = createRiotApiClient({
-  apiKey: process.env.RIOT_API_KEY!,
-  defaultRegion: RiotRegion.AMERICAS,
-  defaultPlatformId: RiotPlatformId.NA1,
-});
-
-// Get PUUID from Riot ID
-const puuid = await riotClient.getPuuidByRiotId('PlayerName', '1234');
-
-// Get match history
-const matchIds = await riotClient.getMatchHistory({
-  puuid,
-  count: 20,
-});
-
-// Get match details
-const match = await riotClient.getMatchDetails(matchIds[0]);
-
-// Get match timeline
-const timeline = await riotClient.getMatchTimeline(matchIds[0]);
-```
-
-### Using Type Definitions Directly
-
-```typescript
-import { AccountDto, MatchDto, MatchIdsDto, MatchTimelineDto } from '@/types/riot';
-import { RiotRegion, RiotPlatformId } from '@/types/riot';
-
-// Example: Type annotations for API responses
-const account: AccountDto = await fetchAccount(gameName, tagLine);
-const puuid = account.puuid;
-
-const matchIds: MatchIdsDto = await fetchMatchHistory(puuid, RiotPlatformId.NA1);
-const match: MatchDto = await fetchMatchDetails(matchIds[0], RiotPlatformId.NA1);
-const timeline: MatchTimelineDto = await fetchMatchTimeline(matchIds[0], RiotPlatformId.NA1);
-```
-
-See `lib/riot-api-client.example.ts` for more usage examples.
 
 ## Type Definitions
 

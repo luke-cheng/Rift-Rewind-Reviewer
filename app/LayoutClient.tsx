@@ -44,10 +44,10 @@ export default function LayoutClient({ children }: LayoutClientProps) {
 
         {/* Footer */}
         <View
-          as="footer"
+          as="div"
           backgroundColor="background.secondary"
           padding="medium"
-          borderTop="1px solid"
+          border="1px solid"
           borderColor="border.primary"
           textAlign="center"
         >

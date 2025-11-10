@@ -64,7 +64,7 @@ export default function AIInsightIndicator({ insights }: AIInsightIndicatorProps
         <Flex direction="column" gap="xs">
           {insights.summary && (
             <Flex direction="row" gap="xs" style={{ flexWrap: "wrap" }}>
-              <AIMatchTag tag={insights.summary} variation={insights.severity === "warning" ? "warning" : "info"} />
+              <AIMatchTag summary={insights.summary} severity={insights.severity} />
             </Flex>
           )}
           {insights.analysis && (

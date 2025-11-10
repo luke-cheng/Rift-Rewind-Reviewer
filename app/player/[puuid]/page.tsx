@@ -12,11 +12,39 @@ import { View, Text, Card, Flex } from "@aws-amplify/ui-react";
 const client = generateClient<Schema>();
 
 async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
-  // TODO: Fetch PlayerStat by puuid
-  // This should query the PlayerStat model by puuid
-  // Return PlayerStats object or null if not found
-  console.log("Fetching player stats for:", puuid);
-  return null;
+  try {
+    // Query PlayerStat model by puuid using Amplify Gen 2 client
+    const { data, errors } = await client.models.PlayerStat.get({
+      puuid,
+    });
+
+    if (errors || !data) {
+      console.error("Error fetching player stats:", errors);
+      return null;
+    }
+
+    // Map the data to PlayerStats interface
+    return {
+      puuid: data.puuid,
+      riotId: data.riotId as { gameName: string; tagLine: string } | undefined,
+      totalMatches: data.totalMatches ?? undefined,
+      wins: data.wins ?? undefined,
+      losses: data.losses ?? undefined,
+      winRate: data.winRate ?? undefined,
+      avgKDA: data.avgKDA as { kills: number; deaths: number; assists: number; ratio: number } | undefined,
+      avgCS: data.avgCS ?? undefined,
+      avgDamage: data.avgDamage ?? undefined,
+      avgVisionScore: data.avgVisionScore ?? undefined,
+      championStats: data.championStats as PlayerStats['championStats'],
+      roleStats: data.roleStats as PlayerStats['roleStats'],
+      lastUpdated: data.lastUpdated ?? undefined,
+      lastMatchFetched: data.lastMatchFetched ?? undefined,
+      aiInsights: data.aiInsights as PlayerStats['aiInsights'],
+    };
+  } catch (error) {
+    console.error("Error fetching player stats:", error);
+    return null;
+  }
 }
 
 export default function PlayerPage() {

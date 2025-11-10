@@ -3,22 +3,46 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { View, Flex, Text } from "@aws-amplify/ui-react";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "@/amplify/data/resource";
 import PlayerSearch from "./PlayerSearch";
+
+const client = generateClient<Schema>();
 
 interface NavBarProps {
   onPlayerSelect?: (puuid: string) => void;
 }
 
 async function searchPlayer(gameName: string, tagLine: string): Promise<string | null> {
-  // TODO: Search player by Riot ID
-  // This should call the Riot API or backend to get the PUUID
-  // Steps:
-  // 1. Call Riot API /riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}
-  // 2. Extract PUUID from response
-  // 3. Optionally cache the result in AccountCache or PlayerStat
-  // Return the PUUID if found, null otherwise
-  console.log("Searching for player:", gameName, tagLine);
-  return null;
+  try {
+    // Call the searchPlayer query through Amplify Gen 2
+    const { data, errors } = await client.queries.searchPlayer({
+      gameName,
+      tagLine,
+    });
+
+    if (errors || !data) {
+      console.error("Error searching for player:", errors);
+      return null;
+    }
+
+    // The searchPlayer query should return an object with puuid
+    // Based on the schema, it returns a.json(), so we need to parse it
+    if (typeof data === 'object' && data !== null && 'puuid' in data) {
+      return (data as { puuid: string }).puuid;
+    }
+
+    // If data is a string, try to parse it
+    if (typeof data === 'string') {
+      const parsed = JSON.parse(data);
+      return parsed.puuid || null;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error searching for player:", error);
+    return null;
+  }
 }
 
 export default function NavBar({ onPlayerSelect }: NavBarProps) {
@@ -50,8 +74,7 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
       as="nav"
       backgroundColor="background.primary"
       padding="medium"
-      borderBottom="1px solid"
-      borderColor="border.primary"
+      style={{ borderBottom: "1px solid var(--amplify-colors-border-primary)" }}
     >
       <Flex
         direction="row"

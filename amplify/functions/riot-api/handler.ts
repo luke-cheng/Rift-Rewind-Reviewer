@@ -1,60 +1,69 @@
-import type { APIGatewayProxyHandler } from 'aws-lambda';
-import { RiotApiClient } from '../../../lib/riot-api-client';
+import type { Handler } from 'aws-lambda';
+import { RiotApiClient } from './riot-api-client';
 import { RiotRegion, RiotPlatformId } from '../../../types/riot';
 
 const riotClient = new RiotApiClient({
   apiKey: process.env.RIOT_API_KEY!,
 });
 
-export const handler: APIGatewayProxyHandler = async (event) => {
-  const { httpMethod, path, queryStringParameters, body } = event;
-  
+/**
+ * Amplify Gen 2 GraphQL Query Handler
+ * 
+ * Handles two queries:
+ * - searchPlayer: Get account by Riot ID (gameName + tagLine)
+ * - fetchMatches: Get match history by PUUID
+ */
+interface GraphQLQueryEvent {
+  arguments: {
+    // searchPlayer query arguments
+    gameName?: string;
+    tagLine?: string;
+    region?: RiotRegion;
+    
+    // fetchMatches query arguments
+    puuid?: string;
+    count?: number;
+    platformId?: RiotPlatformId;
+    
+    [key: string]: any;
+  };
+  identity?: any;
+  source?: any;
+  request?: any;
+  prev?: any;
+  info?: any;
+}
+
+export const handler: Handler<GraphQLQueryEvent, any> = async (event) => {
   try {
-    if (httpMethod === 'GET' && path.includes('/account/')) {
-      const { gameName, tagLine, region } = queryStringParameters || {};
-      if (!gameName || !tagLine) {
-        return { statusCode: 400, body: JSON.stringify({ error: 'Missing gameName or tagLine' }) };
-      }
-      
+    const args = event.arguments;
+    
+    // Handle searchPlayer query
+    if (args.gameName && args.tagLine) {
       const account = await riotClient.getAccountByRiotId(
-        gameName, 
-        tagLine, 
-        region as RiotRegion
+        args.gameName,
+        args.tagLine,
+        args.region
       );
-      return { statusCode: 200, body: JSON.stringify(account) };
+      // Return account data including puuid
+      return account;
     }
     
-    if (httpMethod === 'GET' && path.includes('/matches/')) {
-      const { puuid, platformId, count = '20', start = '0' } = queryStringParameters || {};
-      if (!puuid) {
-        return { statusCode: 400, body: JSON.stringify({ error: 'Missing puuid' }) };
-      }
-      
+    // Handle fetchMatches query
+    if (args.puuid) {
       const matches = await riotClient.getMatchHistory({
-        puuid,
-        platformId: platformId as RiotPlatformId,
-        count: parseInt(count),
-        start: parseInt(start),
+        puuid: args.puuid,
+        platformId: args.platformId,
+        count: args.count || 20,
+        start: 0, // Always start from the beginning
       });
-      return { statusCode: 200, body: JSON.stringify(matches) };
+      return matches;
     }
     
-    if (httpMethod === 'GET' && path.includes('/match/')) {
-      const { matchId, platformId } = queryStringParameters || {};
-      if (!matchId) {
-        return { statusCode: 400, body: JSON.stringify({ error: 'Missing matchId' }) };
-      }
-      
-      const match = await riotClient.getMatchDetails(matchId, platformId as RiotPlatformId);
-      return { statusCode: 200, body: JSON.stringify(match) };
-    }
-    
-    return { statusCode: 404, body: JSON.stringify({ error: 'Not found' }) };
+    throw new Error('Invalid query arguments: Must provide either (gameName, tagLine) or (puuid)');
   } catch (error) {
     console.error('Riot API error:', error);
-    return { 
-      statusCode: 500, 
-      body: JSON.stringify({ error: 'Internal server error' }) 
-    };
+    // Throw error to let Amplify Gen 2 handle it properly
+    throw error;
   }
 };

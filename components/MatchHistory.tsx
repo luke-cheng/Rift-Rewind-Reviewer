@@ -2,8 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { View, Flex, Text, SelectField } from "@aws-amplify/ui-react";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "@/amplify/data/resource";
 import { MatchParticipant } from "./types";
 import MatchCard from "./MatchCard";
+
+const client = generateClient<Schema>();
 
 interface MatchHistoryProps {
   puuid: string;
@@ -11,12 +15,60 @@ interface MatchHistoryProps {
 }
 
 async function fetchMatchHistory(puuid: string, year?: number): Promise<MatchParticipant[]> {
-  // TODO: Query MatchParticipantIndex by puuid
-  // This should query the MatchParticipantIndex model filtered by puuid
-  // Optionally filter by year (gameCreation timestamp)
-  // Return array of MatchParticipant objects
-  console.log("Fetching match history for:", puuid, year);
-  return [];
+  try {
+    // Calculate timestamp range for the year if provided
+    const startTime = year ? new Date(`${year}-01-01`).getTime() : undefined;
+    const endTime = year ? new Date(`${year + 1}-01-01`).getTime() : undefined;
+
+    // Query MatchParticipantIndex model filtered by puuid using Amplify Gen 2 client
+    // Using the secondary index on puuid with sortKeys on gameCreation
+    const filter: any = {
+      puuid: { eq: puuid },
+    };
+
+    // Add year filter if provided (filter by gameCreation timestamp)
+    if (startTime && endTime) {
+      filter.gameCreation = {
+        ge: Math.floor(startTime),
+        lt: Math.floor(endTime),
+      };
+    }
+
+    const { data, errors } = await client.models.MatchParticipantIndex.list({
+      filter,
+      limit: 100, // Adjust limit as needed
+    });
+
+    if (errors || !data) {
+      console.error("Error fetching match history:", errors);
+      return [];
+    }
+
+    // Map the data to MatchParticipant interface
+    return data.map((item) => ({
+      id: item.id || `${item.puuid}-${item.matchId}`,
+      puuid: item.puuid,
+      matchId: item.matchId,
+      gameCreation: item.gameCreation,
+      win: item.win ?? undefined,
+      kills: item.kills ?? undefined,
+      deaths: item.deaths ?? undefined,
+      assists: item.assists ?? undefined,
+      kda: item.kda ?? undefined,
+      championId: item.championId ?? undefined,
+      championName: item.championName ?? undefined,
+      lane: item.lane ?? undefined,
+      role: item.role ?? undefined,
+      teamPosition: item.teamPosition ?? undefined,
+      queueId: item.queueId ?? undefined,
+      gameMode: item.gameMode ?? undefined,
+      processedAt: item.processedAt ?? undefined,
+      aiInsights: item.aiInsights as MatchParticipant['aiInsights'],
+    }));
+  } catch (error) {
+    console.error("Error fetching match history:", error);
+    return [];
+  }
 }
 
 export default function MatchHistory({ puuid, year }: MatchHistoryProps) {

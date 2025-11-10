@@ -11,11 +11,53 @@ import AIInsightIndicator from "@/components/AIInsightIndicator";
 const client = generateClient<Schema>();
 
 async function fetchMatchDetails(matchId: string): Promise<MatchData | null> {
-  // TODO: Fetch MatchCache by matchId
-  // This should query the MatchCache model by matchId
-  // Return MatchData object or null if not found
-  console.log("Fetching match details for:", matchId);
-  return null;
+  try {
+    // Query MatchCache model by matchId using Amplify Gen 2 client
+    const { data, errors } = await client.models.MatchCache.get({
+      matchId,
+    });
+
+    if (errors || !data) {
+      console.error("Error fetching match details:", errors);
+      return null;
+    }
+
+    // Parse matchData if it's a string, otherwise use as-is
+    let parsedMatchData: any = data.matchData;
+    if (typeof data.matchData === 'string') {
+      try {
+        parsedMatchData = JSON.parse(data.matchData);
+      } catch (e) {
+        console.error("Error parsing matchData:", e);
+        parsedMatchData = null;
+      }
+    }
+
+    // Parse timelineData if it's a string, otherwise use as-is
+    let parsedTimelineData: any = data.timelineData;
+    if (data.timelineData && typeof data.timelineData === 'string') {
+      try {
+        parsedTimelineData = JSON.parse(data.timelineData);
+      } catch (e) {
+        console.error("Error parsing timelineData:", e);
+        parsedTimelineData = null;
+      }
+    }
+
+    // Map the data to MatchData interface
+    return {
+      matchId: data.matchId,
+      gameCreation: data.gameCreation,
+      matchData: parsedMatchData,
+      timelineData: parsedTimelineData,
+      expiresAt: data.expiresAt ?? undefined,
+      processedAt: data.processedAt ?? undefined,
+      aiInsights: data.aiInsights as MatchData['aiInsights'],
+    };
+  } catch (error) {
+    console.error("Error fetching match details:", error);
+    return null;
+  }
 }
 
 export default function MatchDetailPage() {

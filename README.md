@@ -106,7 +106,7 @@ See [Frontend Documentation](./app/README.md)
    - Returns: Time-series data of events (kills, item purchases, skill level ups, etc.)
    - Used for: Detailed gameplay analysis, event tracking, position analysis
 
-**API Client**: See [`lib/riot-api-client.ts`](./lib/riot-api-client.ts) for implementation details and [`lib/riot-api-client.example.ts`](./lib/riot-api-client.example.ts) for usage examples.
+**API Client**: The Riot API client is located in [`amplify/functions/riot-api/riot-api-client.ts`](./amplify/functions/riot-api/riot-api-client.ts) and is used by Lambda function handlers. Frontend code uses Amplify Gen 2 GraphQL queries to interact with the backend.
 
 **Rate Limiting**: Riot API has rate limits (Personal API Key: 100 requests per 2 minutes). Implementing:
 
