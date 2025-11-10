@@ -1,5 +1,18 @@
 {
   "mcpServers": {
+    "awslabs.aws-api-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.aws-api-mcp-server@latest"],
+      "env": {
+        "AWS_REGION": "us-east-1"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "aws-knowledge-mcp": {
+      "type": "http",
+      "url": "https://knowledge-mcp.global.api.aws"
+    },
     "awslabs.frontend-mcp-server": {
       "command": "uvx",
       "args": ["awslabs.frontend-mcp-server@latest"],
@@ -9,14 +22,24 @@
       "disabled": false,
       "autoApprove": []
     },
-    "bedrock-data-automation-mcp-server": {
+    "awslabs.aws-documentation-mcp-server": {
       "command": "uvx",
-      "args": ["awslabs.aws-bedrock-data-automation-mcp-server@latest"],
+      "args": ["awslabs.aws-documentation-mcp-server@latest"],
       "env": {
-        "AWS_PROFILE": "your-aws-profile",
-        "AWS_REGION": "us-east-1",
-        "AWS_BUCKET_NAME": "your-s3-bucket-name",
-        "BASE_DIR": "/path/to/base/directory",
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "AWS_DOCUMENTATION_PARTITION": "aws",
+        "MCP_USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "awslabs.dynamodb-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.dynamodb-mcp-server@latest"],
+      "env": {
+        "DDB-MCP-READONLY": "true",
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "us-west-2",
         "FASTMCP_LOG_LEVEL": "ERROR"
       },
       "disabled": false,

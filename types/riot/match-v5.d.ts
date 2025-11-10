@@ -93,7 +93,7 @@ export interface ParticipantDto {
   /** Champion level at game start */
   champLevel: number;
   /** Champion ID. Refer to the Game Constants documentation. */
-  champId: number;
+  championId: number;
   /** Champion name */
   championName: string;
   /** This field is currently only utilized for Kayn's transformations.
