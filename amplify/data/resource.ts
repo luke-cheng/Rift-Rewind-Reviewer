@@ -15,7 +15,7 @@ const schema = a.schema({
     .secondaryIndexes((index) => [
       index("gameCreation"),
     ])
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => allow.guest()),
 
   MatchParticipantIndex: a
     .model({
@@ -52,7 +52,7 @@ const schema = a.schema({
       index("puuid").sortKeys(["gameCreation"]),
       index("matchId"),
     ])
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => allow.guest()),
 
   PlayerStat: a
     .model({
@@ -84,7 +84,7 @@ const schema = a.schema({
     })
     .returns(a.json())
     .handler(a.handler.function("riotApiFunction"))
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => allow.guest()),
 
   fetchMatches: a
     .query()
@@ -95,7 +95,7 @@ const schema = a.schema({
     })
     .returns(a.json())
     .handler(a.handler.function("riotApiFunction"))
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => allow.guest()),
 
   processMatches: a
     .mutation()
@@ -108,16 +108,16 @@ const schema = a.schema({
     })
     .returns(a.json())
     .handler(a.handler.function("dataProcessorFunction"))
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => allow.guest()),
 
-  // AI Generation route for player stats insights
+  // AI Generation route for player stats insights, use for player profile page
   generatePlayerInsights: a
     .generation({
       aiModel: a.ai.model("Claude 3.5 Haiku"),
       systemPrompt: `You are an expert League of Legends coach analyzing player performance statistics. 
       Analyze the provided player statistics and generate actionable insights. 
-      Focus on identifying strengths, weaknesses, and areas for improvement.
-      Return insights in a structured format with severity level, summary, and detailed analysis.`,
+      Focus on identifying strengths, weaknesses, and areas for improvement, be rough and concise.
+      Return insights in a structured format with severity level (no-issue, info, warning), summary (few words critical comment on the player's playstyle like kamakaze tower diver, city boi can't farm, etc.), and detailed analysis (one paragraph sentences support by reasoning).`,
     })
     .arguments({
       playerStats: a.json().required(), // Player statistics data
@@ -129,16 +129,16 @@ const schema = a.schema({
         analysis: a.string(), // 2-3 sentence detailed analysis
       })
     )
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => allow.guest()),
 
-  // AI Generation route for match insights
+  // AI Generation route for match insights, use for the match history page
   generateMatchInsights: a
     .generation({
       aiModel: a.ai.model("Claude 3.5 Haiku"),
       systemPrompt: `You are an expert League of Legends coach analyzing individual match performance. 
-      Analyze the provided match data and generate actionable insights about the player's performance in this specific match.
+      Analyze the provided match history and generate actionable insights about the player's performance in this specific match.
       Focus on key moments, decision-making, and specific areas for improvement.
-      Return insights in a structured format with severity level, summary, and detailed analysis.`,
+      Return insights in a structured format with severity level (no-issue, info, warning), summary (few words classification like tilted, learning new champion, etc.), and detailed analysis (paragraph sentences support by reasoning).`,
     })
     .arguments({
       matchData: a.json().required(), // Match participant data
@@ -150,7 +150,32 @@ const schema = a.schema({
         analysis: a.string(), // 2-3 sentence detailed analysis
       })
     )
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => allow.guest()),
+  
+  // AI Generation route for timeline insights, use for the match detail page
+  generateTimelineInsights: a
+    .generation({
+      aiModel: a.ai.model("Claude 3.5 Haiku"),
+      systemPrompt: `You are an expert League of Legends coach analyzing the timeline of a match.
+      Analyze the provided timeline data and generate actionable insights about the player's performance in this specific match.
+      Focus on key moments, call out bad decision-making, and specific areas for improvement.
+      Return insights in a structured format with a list of timestamp, severity level (info, warning), summary (few words classification like noob, you'd see this gank coming, etc.), and detailed analysis (paragraph sentences support by reasoning).
+      Returns an array of timeline insights: Array<{ timestamp: number, severity: string, summary: string, analysis: string }>
+      The severity level should be one of the following:
+      - info: The player made a good decision.
+      - warning: The player made a bad decision.
+      The summary should be a few words classification like noob, you'd see this gank coming, why split pushing?, etc.
+      The detailed analysis should be a paragraph sentences support by reasoning.
+      `,
+    })
+    .arguments({
+      timelineData: a.json().required(), // Timeline data
+    })
+    .returns(
+      // Returns an array of timeline insights: Array<{ timestamp: number, severity: string, summary: string, analysis: string }>
+      a.json()
+    )
+    .authorization((allow) => allow.guest()),
 });
 
 export type Schema = ClientSchema<typeof schema>;

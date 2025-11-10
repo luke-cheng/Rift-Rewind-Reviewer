@@ -2,12 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { View, Flex, Text, SelectField } from "@aws-amplify/ui-react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
+import { client } from "@/app/client";
 import { MatchParticipant } from "./types";
 import MatchCard from "./MatchCard";
-
-const client = generateClient<Schema>();
 
 interface MatchHistoryProps {
   puuid: string;

@@ -5,7 +5,7 @@ import { ReactNode } from "react";
 import { Card, Flex, Text, View, Button, Loader } from "@aws-amplify/ui-react";
 import AIStatsComment from "./AIStatsComment";
 import { AIInsights, PlayerStats } from "./types";
-import { useAIGeneration } from "@/lib/client";
+import { useAIGeneration } from "@/app/client";
 
 interface StatSectionProps {
   title: string;

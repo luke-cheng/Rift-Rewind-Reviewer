@@ -2,15 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
+import { client } from "@/app/client";
 import { MatchData } from "@/components/types";
 import { View, Text, Card, Flex, Badge } from "@aws-amplify/ui-react";
 import AIInsightIndicator from "@/components/AIInsightIndicator";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
-
-const client = generateClient<Schema>();
 
 async function fetchMatchDetails(matchId: string): Promise<MatchData | null> {
   try {

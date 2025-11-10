@@ -6,7 +6,7 @@ import { Card, Flex, Text, Badge, Button, Loader } from "@aws-amplify/ui-react";
 import { MatchParticipant, AIInsights } from "./types";
 import AIInsightIndicator from "./AIInsightIndicator";
 import AIMatchTag from "./AIMatchTag";
-import { useAIGeneration } from "@/lib/client";
+import { useAIGeneration } from "@/app/client";
 
 interface MatchCardProps {
   match: MatchParticipant;

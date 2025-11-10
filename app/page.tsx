@@ -1,16 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
+import { client } from "@/app/client";
 import StatsDashboard from "@/components/StatsDashboard";
 import MatchHistory from "@/components/MatchHistory";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import { PlayerStats } from "@/components/types";
 import { View, Flex, Text } from "@aws-amplify/ui-react";
-
-const client = generateClient<Schema>();
 
 async function fetchPlayerStats(puuid: string): Promise<PlayerStats | null> {
   try {

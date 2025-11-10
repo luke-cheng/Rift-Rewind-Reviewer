@@ -3,11 +3,8 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { View, Flex, Text } from "@aws-amplify/ui-react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
+import { client } from "@/app/client";
 import PlayerSearch from "./PlayerSearch";
-
-const client = generateClient<Schema>();
 
 interface NavBarProps {
   onPlayerSelect?: (puuid: string) => void;
