@@ -47,23 +47,8 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
     const { puuid, matches, matchIds, count, platformId } = event.arguments;
     
     if (!puuid) {
-      const errorResponse = {
-        success: false,
-        error: {
-          message: 'Missing required argument: puuid',
-          code: 'MISSING_ARGUMENT',
-          statusCode: 400,
-          details: {
-            receivedArguments: Object.keys(event.arguments || {}),
-          },
-          timestamp: new Date().toISOString(),
-        }
-      };
-      
-      // Log the full error response
-      console.error('Error response from processMatches (missing argument):', JSON.stringify(errorResponse, null, 2));
-      
-      return errorResponse;
+      console.error('Missing required argument: puuid');
+      throw new Error('Missing required argument: puuid');
     }
     
     let matchesToProcess: MatchDto[] = [];
@@ -87,10 +72,7 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
               throw new Error(errors ? errors.map(e => e.message).join(', ') : 'No data returned');
             }
             
-            // Handle error response from resolver
-            if (typeof data === 'object' && 'success' in data && (data as any).success === false) {
-              throw new Error((data as any).error?.message || 'Failed to fetch match details');
-            }
+
             
             return data as MatchDto;
           } catch (error) {
@@ -115,11 +97,7 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
           throw new Error(matchIdsErrors.map(e => e.message).join(', '));
         }
         
-        // Handle error response from resolver
-        if (matchIdsData && typeof matchIdsData === 'object' && 'success' in matchIdsData && (matchIdsData as any).success === false) {
-          const errorData = matchIdsData as any;
-          throw new Error(errorData.error?.message || 'Failed to fetch match history');
-        }
+
         
         const matchIdsList = matchIdsData as string[];
         
@@ -145,10 +123,7 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
                 throw new Error(errors ? errors.map(e => e.message).join(', ') : 'No data returned');
               }
               
-              // Handle error response from resolver
-              if (typeof data === 'object' && 'success' in data && (data as any).success === false) {
-                throw new Error((data as any).error?.message || 'Failed to fetch match details');
-              }
+
               
               return data as MatchDto;
             } catch (error) {
@@ -158,26 +133,9 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
           })
         );
       } catch (error) {
-        // If match history fetch fails, wrap and return error
-        const errorResponse = {
-          success: false,
-          error: {
-            message: error instanceof Error ? error.message : 'Failed to fetch match history',
-            code: 'MATCH_HISTORY_FETCH_ERROR',
-            statusCode: error instanceof Error && error.message.includes('404') ? 404 : 500,
-            details: {
-              puuid,
-              platformId,
-              count: count || 20,
-            },
-            timestamp: new Date().toISOString(),
-          }
-        };
-        
-        // Log the full error response
-        console.error('Error response from processMatches (match history fetch error):', JSON.stringify(errorResponse, null, 2));
-        
-        return errorResponse;
+        // If match history fetch fails, log and re-throw
+        console.error('Failed to fetch match history:', error);
+        throw error;
       }
     }
     
@@ -219,28 +177,9 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
       puuid,
     };
   } catch (error) {
-    // Wrap error in response body instead of throwing
-    const errorResponse = {
-      success: false,
-      error: {
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
-        code: 'DATA_PROCESSOR_ERROR',
-        statusCode: 500,
-        details: {
-          puuid: event.arguments?.puuid,
-          matches: event.arguments?.matches ? 'provided' : 'not provided',
-          matchIds: event.arguments?.matchIds ? event.arguments.matchIds.length : 0,
-          count: event.arguments?.count,
-          platformId: event.arguments?.platformId,
-        },
-        timestamp: new Date().toISOString(),
-      }
-    };
-    
-    // Log the full error response
-    console.error('Error response from processMatches:', JSON.stringify(errorResponse, null, 2));
-    
-    return errorResponse;
+    // Log error and re-throw
+    console.error('Error in processMatches handler:', error);
+    throw error;
   }
 };
 
@@ -488,11 +427,6 @@ async function aggregatePlayerStats(puuid: string, platformId?: string) {
       });
       
       if (!accountErrors && accountData) {
-        // Handle error response from resolver
-        if (typeof accountData === 'object' && 'success' in accountData && (accountData as any).success === false) {
-          throw new Error((accountData as any).error?.message || 'Failed to fetch account');
-        }
-        
         const account = accountData as { gameName: string; tagLine: string; puuid: string };
         if (account && account.gameName && account.tagLine) {
           riotId = {

@@ -67,22 +67,13 @@ async function processPlayerMatches(puuid: string): Promise<{ success: boolean; 
     // Log the full API response
     console.error('API response from processMatches:', JSON.stringify(response, null, 2));
     
-    const { data, errors } = response;
+    const { errors } = response;
     
     // Check for GraphQL errors
     if (errors) {
       return { success: false, error: { errors } };
     }
     
-    // Check if the response indicates an error (wrapped error from handler)
-    if (data && typeof data === 'object' && 'success' in data) {
-      if ((data as any).success === false) {
-        return { success: false, error: (data as any).error };
-      }
-      return { success: true };
-    }
-    
-    // If no errors and no explicit success field, consider it successful
     return { success: true };
   } catch (error) {
     // Log the full error
