@@ -1,4 +1,10 @@
-import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
+import {
+  type ClientSchema,
+  a,
+  defineData,
+} from "@aws-amplify/backend";
+import { riotApiHttpFunction } from '../functions/riot-api-http/resource';
+import { dataProcessorFunction } from '../functions/data-processor/resource';
 
 const schema = a.schema({
   MatchCache: a
@@ -12,9 +18,7 @@ const schema = a.schema({
       aiInsights: a.json(),
     })
     .identifier(["matchId"])
-    .secondaryIndexes((index) => [
-      index("gameCreation"),
-    ])
+    .secondaryIndexes((index) => [index("gameCreation")])
     .authorization((allow) => [allow.publicApiKey()]),
 
   MatchParticipantIndex: a
@@ -83,18 +87,49 @@ const schema = a.schema({
       region: a.string(),
     })
     .returns(a.json())
-    .handler(a.handler.function("riotApiFunction"))
+    .handler(a.handler.function(riotApiHttpFunction))
     .authorization((allow) => [allow.publicApiKey()]),
 
-  fetchMatches: a
+  fetchMatchIds: a
     .query()
     .arguments({
       puuid: a.string().required(),
       count: a.integer(),
       platformId: a.string(),
+      start: a.integer(),
     })
     .returns(a.json())
-    .handler(a.handler.function("riotApiFunction"))
+    .handler(a.handler.function(riotApiHttpFunction))
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  getMatchDetails: a
+    .query()
+    .arguments({
+      matchId: a.string().required(),
+      platformId: a.string(),
+    })
+    .returns(a.json())
+    .handler(a.handler.function(riotApiHttpFunction))
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  getMatchTimeline: a
+    .query()
+    .arguments({
+      matchId: a.string().required(),
+      platformId: a.string(),
+    })
+    .returns(a.json())
+    .handler(a.handler.function(riotApiHttpFunction))
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  getAccountByPuuid: a
+    .query()
+    .arguments({
+      puuid: a.string().required(),
+      region: a.string(),
+    })
+    .returns(a.json())
+    .handler(a.handler.function(riotApiHttpFunction))
     .authorization((allow) => [allow.publicApiKey()]),
 
   processMatches: a
@@ -107,7 +142,7 @@ const schema = a.schema({
       platformId: a.string(), // Optional: platform ID for Riot API
     })
     .returns(a.json())
-    .handler(a.handler.function("dataProcessorFunction"))
+    .handler(a.handler.function(dataProcessorFunction))
     .authorization((allow) => [allow.publicApiKey()]),
 
   // AI Generation route for player stats insights, use for player profile page
@@ -151,7 +186,7 @@ const schema = a.schema({
       })
     )
     .authorization((allow) => [allow.publicApiKey()]),
-  
+
   // AI Generation route for timeline insights, use for the individual match detail page
   generateTimelineInsights: a
     .generation({

@@ -1,8 +1,8 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
-import { riotApiFunction } from './functions/riot-api/resource';
 import { dataProcessorFunction } from './functions/data-processor/resource';
+import { riotApiHttpFunction } from './functions/riot-api-http/resource';
 import { Tags } from 'aws-cdk-lib';
 
 /**
@@ -11,8 +11,8 @@ import { Tags } from 'aws-cdk-lib';
 export const backend = defineBackend({
   auth,
   data,
-  riotApiFunction,
   dataProcessorFunction,
+  riotApiHttpFunction,
 });
 
 // Tag all resources in the backend stack with the hackathon tag

@@ -3,17 +3,6 @@
   "description": "Default agent configuration",
   "prompt": "",
   "mcpServers": {
-    "awslabs.aws-api-mcp-server": {
-      "command": "uvx",
-      "args": [
-        "awslabs.aws-api-mcp-server@latest"
-      ],
-      "env": {
-        "AWS_REGION": "us-east-1"
-      },
-      "disabled": false,
-      "autoApprove": []
-    },
     "aws-knowledge-mcp": {
       "type": "http",
       "url": "https://knowledge-mcp.global.api.aws"
@@ -69,6 +58,17 @@
       },
       "disabled": false,
       "autoApprove": []
+    },
+    "awslabsaws-api-mcp-server": {
+      "command": "uvx",
+      "disabled": false,
+      "timeout": 60000,
+      "args": [
+        "awslabs.aws-api-mcp-server@latest"
+      ],
+      "env": {
+        "AWS_REGION": "us-east-1"
+      }
     }
   },
   "tools": [
@@ -77,7 +77,8 @@
     "fs_write",
     "report_issue",
     "use_aws",
-    "@AWS API MCP Server"
+    "@AWS API MCP Server",
+    "@awslabsaws-api-mcp-server"
   ],
   "toolAliases": {},
   "allowedTools": [

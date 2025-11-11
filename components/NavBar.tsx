@@ -77,8 +77,19 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
         showError("Player not found. Please check the game name and tag line.");
       }
     } catch (error) {
-      // Log the full error
-      console.error('Unexpected error in handleSearch:', JSON.stringify(error, null, 2));
+      // Log the full error with better error handling
+      console.error('Unexpected error in handleSearch:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Try to stringify with error replacer
+      try {
+        console.error('Error JSON:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      } catch (e) {
+        console.error('Could not stringify error:', e);
+      }
+      
       showError("Error searching for player. Please try again.");
     } finally {
       setIsSearching(false);

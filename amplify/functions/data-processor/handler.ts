@@ -3,15 +3,9 @@ import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../data/resource';
 import type { MatchDto, ParticipantDto, MatchInfoDto } from '../../types/riot/match-v5';
-import { RiotApiClient } from '../riot-api/riot-api-client';
-import { RiotPlatformId } from '../../types/riot/index';
 
 if (!process.env.DATA_GRAPHQL_ENDPOINT || !process.env.AWS_REGION) {
   throw new Error('Required environment variables missing: DATA_GRAPHQL_ENDPOINT, AWS_REGION');
-}
-
-if (!process.env.RIOT_API_KEY) {
-  throw new Error('RIOT_API_KEY environment variable is required');
 }
 
 Amplify.configure({
@@ -25,11 +19,6 @@ Amplify.configure({
 });
 
 const client = generateClient<Schema>();
-
-// Initialize Riot API client
-const riotClient = new RiotApiClient({
-  apiKey: process.env.RIOT_API_KEY!,
-});
 
 /**
  * Amplify Gen 2 GraphQL Mutation Handler
@@ -83,16 +72,27 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
     if (matches && Array.isArray(matches) && matches.length > 0) {
       matchesToProcess = matches;
     } 
-    // If match IDs are provided, fetch match details for each
+    // If match IDs are provided, fetch match details for each using GraphQL queries
     else if (matchIds && Array.isArray(matchIds) && matchIds.length > 0) {
-      console.log(`Fetching ${matchIds.length} match details from Riot API...`);
+      console.log(`Fetching ${matchIds.length} match details via GraphQL...`);
       matchesToProcess = await Promise.all(
         matchIds.map(async (matchId: string) => {
           try {
-            return await riotClient.getMatchDetails(
+            const { data, errors } = await client.queries.getMatchDetails({
               matchId,
-              platformId as RiotPlatformId | undefined
-            );
+              platformId: platformId || 'na1',
+            });
+            
+            if (errors || !data) {
+              throw new Error(errors ? errors.map(e => e.message).join(', ') : 'No data returned');
+            }
+            
+            // Handle error response from resolver
+            if (typeof data === 'object' && 'success' in data && (data as any).success === false) {
+              throw new Error((data as any).error?.message || 'Failed to fetch match details');
+            }
+            
+            return data as MatchDto;
           } catch (error) {
             console.error(`Failed to fetch match ${matchId}:`, error);
             throw error;
@@ -100,17 +100,28 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
         })
       );
     }
-    // Otherwise, fetch match history and then match details
+    // Otherwise, fetch match history and then match details using GraphQL queries
     else {
-      console.log(`Fetching match history for puuid: ${puuid} (last 365 days)...`);
+      console.log(`Fetching match history for puuid: ${puuid} (last 365 days) via GraphQL...`);
       try {
-        const matchIdsList = await riotClient.getMatchHistory({
+        const { data: matchIdsData, errors: matchIdsErrors } = await client.queries.fetchMatchIds({
           puuid,
-          platformId: platformId as RiotPlatformId | undefined,
+          platformId: platformId || 'na1',
           count: count || 20,
           start: 0,
-          // startTime is automatically set to 365 days ago in riot-api-client
         });
+        
+        if (matchIdsErrors) {
+          throw new Error(matchIdsErrors.map(e => e.message).join(', '));
+        }
+        
+        // Handle error response from resolver
+        if (matchIdsData && typeof matchIdsData === 'object' && 'success' in matchIdsData && (matchIdsData as any).success === false) {
+          const errorData = matchIdsData as any;
+          throw new Error(errorData.error?.message || 'Failed to fetch match history');
+        }
+        
+        const matchIdsList = matchIdsData as string[];
         
         if (!matchIdsList || matchIdsList.length === 0) {
           return {
@@ -121,14 +132,25 @@ export const handler: Handler<GraphQLMutationEvent, any> = async (event) => {
           };
         }
         
-        console.log(`Found ${matchIdsList.length} matches from the last year, fetching details...`);
+        console.log(`Found ${matchIdsList.length} matches from the last year, fetching details via GraphQL...`);
         matchesToProcess = await Promise.all(
           matchIdsList.map(async (matchId: string) => {
             try {
-              return await riotClient.getMatchDetails(
+              const { data, errors } = await client.queries.getMatchDetails({
                 matchId,
-                platformId as RiotPlatformId | undefined
-              );
+                platformId: platformId || 'na1',
+              });
+              
+              if (errors || !data) {
+                throw new Error(errors ? errors.map(e => e.message).join(', ') : 'No data returned');
+              }
+              
+              // Handle error response from resolver
+              if (typeof data === 'object' && 'success' in data && (data as any).success === false) {
+                throw new Error((data as any).error?.message || 'Failed to fetch match details');
+              }
+              
+              return data as MatchDto;
             } catch (error) {
               console.error(`Failed to fetch match ${matchId}:`, error);
               throw error;
@@ -457,15 +479,27 @@ async function aggregatePlayerStats(puuid: string, platformId?: string) {
       };
     }
 
-    // Try to get Riot ID from account API (optional, don't fail if it doesn't work)
+    // Try to get Riot ID from account API via GraphQL (optional, don't fail if it doesn't work)
     let riotId: { gameName: string; tagLine: string } | undefined;
     try {
-      const account = await riotClient.getAccountByPuuid(puuid);
-      if (account && account.gameName && account.tagLine) {
-        riotId = {
-          gameName: account.gameName,
-          tagLine: account.tagLine,
-        };
+      const { data: accountData, errors: accountErrors } = await client.queries.getAccountByPuuid({
+        puuid,
+        region: 'americas', // Default region, could be improved to detect from platformId
+      });
+      
+      if (!accountErrors && accountData) {
+        // Handle error response from resolver
+        if (typeof accountData === 'object' && 'success' in accountData && (accountData as any).success === false) {
+          throw new Error((accountData as any).error?.message || 'Failed to fetch account');
+        }
+        
+        const account = accountData as { gameName: string; tagLine: string; puuid: string };
+        if (account && account.gameName && account.tagLine) {
+          riotId = {
+            gameName: account.gameName,
+            tagLine: account.tagLine,
+          };
+        }
       }
     } catch (error) {
       console.warn(`Could not fetch Riot ID for puuid ${puuid}:`, error);

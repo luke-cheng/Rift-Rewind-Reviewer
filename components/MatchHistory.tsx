@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { View, Flex, Text, SelectField } from "@aws-amplify/ui-react";
+import { View, Flex, Text } from "@aws-amplify/ui-react";
 import { client } from "@/app/client";
 import { MatchParticipant } from "./types";
 import MatchCard from "./MatchCard";
@@ -9,28 +9,15 @@ import { useToast } from "@/context/ToastContext";
 
 interface MatchHistoryProps {
   puuid: string;
-  year?: number;
 }
 
-async function fetchMatchHistory(puuid: string, year?: number): Promise<MatchParticipant[]> {
+async function fetchMatchHistory(puuid: string): Promise<MatchParticipant[]> {
   try {
-    // Calculate timestamp range for the year if provided
-    const startTime = year ? new Date(`${year}-01-01`).getTime() : undefined;
-    const endTime = year ? new Date(`${year + 1}-01-01`).getTime() : undefined;
-
     // Query MatchParticipantIndex model filtered by puuid using Amplify Gen 2 client
     // Using the secondary index on puuid with sortKeys on gameCreation
     const filter: any = {
       puuid: { eq: puuid },
     };
-
-    // Add year filter if provided (filter by gameCreation timestamp)
-    if (startTime && endTime) {
-      filter.gameCreation = {
-        ge: Math.floor(startTime),
-        lt: Math.floor(endTime),
-      };
-    }
 
     const { data, errors } = await client.models.MatchParticipantIndex.list({
       filter,
@@ -41,8 +28,9 @@ async function fetchMatchHistory(puuid: string, year?: number): Promise<MatchPar
       return [];
     }
 
-    // Map the data to MatchParticipant interface
-    return data.map((item) => ({
+    // Map the data to MatchParticipant interface and sort by gameCreation (reverse chronological - newest first)
+    return data
+      .map((item) => ({
       id: item.matchId || `${item.puuid}-${item.matchId}`,
       puuid: item.puuid,
       matchId: item.matchId,
@@ -71,16 +59,16 @@ async function fetchMatchHistory(puuid: string, year?: number): Promise<MatchPar
       gameDuration: item.gameDuration ?? undefined,
       processedAt: item.processedAt ?? undefined,
       aiInsights: item.aiInsights as MatchParticipant['aiInsights'],
-    }));
+    }))
+      .sort((a, b) => (b.gameCreation || 0) - (a.gameCreation || 0)); // Sort reverse chronological (newest first)
   } catch {
     return [];
   }
 }
 
-export default function MatchHistory({ puuid, year }: MatchHistoryProps) {
+export default function MatchHistory({ puuid }: MatchHistoryProps) {
   const [matches, setMatches] = useState<MatchParticipant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(year || new Date().getFullYear());
   const [error, setError] = useState<string | null>(null);
   const { error: showError } = useToast();
 
@@ -90,7 +78,7 @@ export default function MatchHistory({ puuid, year }: MatchHistoryProps) {
     setIsLoading(true);
     setError(null);
 
-    fetchMatchHistory(puuid, selectedYear)
+    fetchMatchHistory(puuid)
       .then((data) => {
         setMatches(data);
         setIsLoading(false);
@@ -101,11 +89,7 @@ export default function MatchHistory({ puuid, year }: MatchHistoryProps) {
         showError("Failed to load match history");
         setIsLoading(false);
       });
-  }, [puuid, selectedYear, showError]);
-
-  // Generate year options (current year and past few years)
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  }, [puuid, showError]);
 
   if (!puuid) {
     return (
@@ -134,27 +118,13 @@ export default function MatchHistory({ puuid, year }: MatchHistoryProps) {
   return (
     <View maxWidth="1200px" margin="0 auto" padding="medium">
       <Flex direction="column" gap="medium">
-        <Flex direction="row" justifyContent="space-between" alignItems="center">
-          <Text fontSize="xl" fontWeight="bold">
-            Match History
-          </Text>
-          <SelectField
-            label="Year"
-            labelHidden
-            value={selectedYear.toString()}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </SelectField>
-        </Flex>
+        <Text fontSize="xl" fontWeight="bold">
+          Match History
+        </Text>
 
         {matches.length === 0 ? (
           <View padding="large" textAlign="center">
-            <Text>No matches found for this year</Text>
+            <Text>No matches found</Text>
           </View>
         ) : (
           <Flex direction="column" gap="small">
