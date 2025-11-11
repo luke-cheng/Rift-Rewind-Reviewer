@@ -36,18 +36,7 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
         return;
       }
 
-      // Check if data indicates an error response (wrapped error from handler)
-      if (data && typeof data === 'object' && 'success' in data && (data as any).success === false) {
-        const errorResponse = data as { success: false; error: any };
-        
-        // Show user-friendly error message
-        if (errorResponse.error?.code === 'PLAYER_NOT_FOUND') {
-          showError("Player not found. Please check the game name and tag line.");
-        } else {
-          showError(errorResponse.error?.message || "Error searching for player. Please try again.");
-        }
-        return;
-      }
+
 
       if (!data) {
         showError("Player not found. Please check the game name and tag line.");

@@ -85,17 +85,10 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
     console.log('Field name:', fieldName);
     console.log('Arguments:', JSON.stringify(args, null, 2));
     
-    // If no field name, return error
+    // If no field name, throw error
     if (!fieldName) {
       console.error('No field name found in event');
-      return {
-        success: false,
-        error: {
-          message: 'No field name found in GraphQL event',
-          code: 'INVALID_EVENT',
-          details: { eventKeys: Object.keys(event) },
-        },
-      };
+      throw new Error('No field name found in GraphQL event');
     }
 
     // Handle searchPlayer query
@@ -111,14 +104,10 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        return {
-          success: false,
-          error: {
-            message: `Riot API error: ${response.status} ${response.statusText}`,
-            code: response.status === 404 ? 'PLAYER_NOT_FOUND' : 'RIOT_API_ERROR',
-            statusCode: response.status,
-          },
-        };
+        const errorMessage = response.status === 404 
+          ? 'Player not found' 
+          : `Riot API error: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       return await response.json();
@@ -145,14 +134,10 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        return {
-          success: false,
-          error: {
-            message: `Riot API error: ${response.status} ${response.statusText}`,
-            code: response.status === 404 ? 'MATCHES_NOT_FOUND' : 'RIOT_API_ERROR',
-            statusCode: response.status,
-          },
-        };
+        const errorMessage = response.status === 404 
+          ? 'Matches not found' 
+          : `Riot API error: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       return await response.json();
@@ -172,14 +157,10 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        return {
-          success: false,
-          error: {
-            message: `Riot API error: ${response.status} ${response.statusText}`,
-            code: response.status === 404 ? 'MATCH_NOT_FOUND' : 'RIOT_API_ERROR',
-            statusCode: response.status,
-          },
-        };
+        const errorMessage = response.status === 404 
+          ? 'Match not found' 
+          : `Riot API error: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       return await response.json();
@@ -199,14 +180,10 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        return {
-          success: false,
-          error: {
-            message: `Riot API error: ${response.status} ${response.statusText}`,
-            code: response.status === 404 ? 'TIMELINE_NOT_FOUND' : 'RIOT_API_ERROR',
-            statusCode: response.status,
-          },
-        };
+        const errorMessage = response.status === 404 
+          ? 'Timeline not found' 
+          : `Riot API error: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       return await response.json();
@@ -225,37 +202,20 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        return {
-          success: false,
-          error: {
-            message: `Riot API error: ${response.status} ${response.statusText}`,
-            code: response.status === 404 ? 'ACCOUNT_NOT_FOUND' : 'RIOT_API_ERROR',
-            statusCode: response.status,
-          },
-        };
+        const errorMessage = response.status === 404 
+          ? 'Account not found' 
+          : `Riot API error: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       return await response.json();
     }
 
-    return {
-      success: false,
-      error: {
-        message: `Unknown field: ${fieldName}`,
-        code: 'UNKNOWN_FIELD',
-      },
-    };
+    throw new Error(`Unknown field: ${fieldName}`);
   } catch (error) {
     console.error('Handler error:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    return {
-      success: false,
-      error: {
-        message: error instanceof Error ? error.message : String(error) || 'Unknown error occurred',
-        code: 'UNKNOWN_ERROR',
-        details: error instanceof Error ? { name: error.name, stack: error.stack } : undefined,
-      },
-    };
+    throw error;
   }
 };
 
