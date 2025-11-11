@@ -9,8 +9,6 @@ interface PlayerSearchProps {
   isLoading?: boolean;
 }
 
-const DEFAULT_TAG = "NA1";
-
 export default function PlayerSearch({ onSearch, isLoading }: PlayerSearchProps) {
   const [gameName, setGameName] = useState("");
   const [tagLine, setTagLine] = useState("");
@@ -19,10 +17,15 @@ export default function PlayerSearch({ onSearch, isLoading }: PlayerSearchProps)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedGameName = gameName.trim();
-    const trimmedTagLine = tagLine.trim() || DEFAULT_TAG;
+    const trimmedTagLine = tagLine.trim();
 
     if (!trimmedGameName) {
       showWarning("Please enter a player name.");
+      return;
+    }
+
+    if (!trimmedTagLine) {
+      showWarning("Please enter a tag line.");
       return;
     }
 
@@ -60,7 +63,7 @@ export default function PlayerSearch({ onSearch, isLoading }: PlayerSearchProps)
         </Flex>
         <TextField
           label="Tag Line"
-          placeholder={DEFAULT_TAG}
+          placeholder="NA1"
           value={tagLine}
           onChange={(e) => setTagLine(e.target.value)}
           isDisabled={isLoading}
