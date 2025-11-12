@@ -14,6 +14,162 @@ Public MVP for League of Legends gameplay performance analyzer. No authenticatio
 
 ---
 
+## AWS Amplify Gen2 Configuration
+
+This project uses **AWS Amplify Gen2** for backend infrastructure and frontend integration.
+
+### Backend Structure (`amplify/` directory)
+
+The Amplify Gen2 backend is defined using a code-first approach with TypeScript:
+
+**Key Files:**
+- `amplify/backend.ts` - Main backend definition that imports and configures all resources
+- `amplify/data/resource.ts` - Data schema with models, queries, mutations, and AI generation routes
+- `amplify/auth/resource.ts` - Authentication configuration (email-based login)
+- `amplify/storage/resource.ts` - S3 bucket for match data caching
+- `amplify/functions/` - Lambda function definitions
+
+**Backend Resources:**
+```typescript
+// amplify/backend.ts
+export const backend = defineBackend({
+  auth,      // Authentication (email login)
+  data,      // AppSync GraphQL API with DynamoDB
+  storage,   // S3 bucket for match caching
+  dataProcessorFunction,  // Lambda for data processing
+  riotApiHttpFunction,    // Lambda for Riot API calls
+});
+```
+
+### Frontend Configuration
+
+**Configuration Component: `app/ConfigureAmplify.tsx`**
+
+The Amplify configuration follows AWS Amplify Gen2 best practices for Next.js App Router:
+
+1. **Client-Side Configuration**: Amplify is configured in a client component marked with `"use client"`
+2. **Dynamic Import**: The `amplify_outputs.json` file is imported dynamically to handle cases where it doesn't exist during local development
+3. **SSR Support**: Configured with `{ ssr: true }` for Next.js App Router compatibility
+4. **Error Handling**: Gracefully handles missing configuration in local development
+
+```typescript
+// app/ConfigureAmplify.tsx
+export const ConfigureAmplify = () => {
+  useEffect(() => {
+    import("@/amplify_outputs.json")
+      .then((outputs) => {
+        Amplify.configure(outputs.default || outputs, {
+          ssr: true, // Enable SSR support for Next.js App Router
+        });
+      })
+      .catch((error) => {
+        console.warn("Amplify outputs not found...", error.message);
+      });
+  }, []);
+  return null;
+};
+```
+
+**Integration in Layout: `app/layout.tsx`**
+
+The ConfigureAmplify component is imported and rendered at the root level:
+
+```typescript
+// app/layout.tsx
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        <ConfigureAmplify />  {/* Configure Amplify on app load */}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+### Client Generation
+
+**Typed Client: `app/client.ts`**
+
+A fully-typed Amplify client is generated from the schema:
+
+```typescript
+// app/client.ts
+import { generateClient } from "aws-amplify/api";
+import { Schema } from "@/amplify/data/resource";
+import { createAIHooks } from "@aws-amplify/ui-react-ai";
+
+// Generate client with API key authentication
+export const client = generateClient<Schema>({
+  authMode: 'apiKey',
+});
+
+// Create AI hooks for AI generation features
+export const { useAIConversation, useAIGeneration } = createAIHooks(client);
+```
+
+### Deployment Configuration
+
+**Build Configuration: `amplify.yml`**
+
+The application uses Amplify Hosting with the following build process:
+
+```yaml
+backend:
+  phases:
+    build:
+      commands:
+        - npm ci --cache .npm --prefer-offline
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+
+frontend:
+  phases:
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+```
+
+**Key Points:**
+1. Backend is deployed first using `ampx pipeline-deploy`
+2. This generates `amplify_outputs.json` with all backend configuration
+3. Frontend build then uses this configuration
+4. The outputs file contains API endpoints, auth config, and storage bucket info
+
+### Authentication Flow
+
+This application uses **API Key authentication** (no user login required):
+
+- All data models use `allow.publicApiKey()` authorization
+- API keys expire after 30 days (configurable in `data/resource.ts`)
+- Suitable for public-facing applications where no user authentication is needed
+
+### Data Models
+
+**Core Models:**
+- `MatchCache` - Cached match data from Riot API
+- `MatchParticipantIndex` - Player participation in matches (indexed by puuid and matchId)
+- `PlayerStat` - Aggregated player statistics
+
+**Custom Queries:**
+- `searchPlayer` - Search for player by Riot ID
+- `fetchMatchIds` - Get match history for a player
+- `getMatchDetails` - Get detailed match data
+- `getMatchTimeline` - Get match timeline data
+
+**AI Generation Routes:**
+- `generatePlayerInsights` - AI analysis of player statistics
+- `generateMatchInsights` - AI analysis of match performance
+- `generateTimelineInsights` - AI analysis of match timeline
+
+---
+
 ## [Frontend](./app/README.md)
 
 ### Pages & Components
