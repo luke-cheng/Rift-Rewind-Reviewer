@@ -1,8 +1,25 @@
+import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../data/resource';
 import type { MatchDto, ParticipantDto, MatchInfoDto } from '../../types/riot/match-v5';
 
-// Initialize client - Amplify auto-configures when used as handler
+// Configure Amplify with environment-based resource configuration
+// This is required before calling generateClient() in Lambda functions
+// Amplify automatically provides these environment variables when the function is deployed
+if (process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT) {
+  Amplify.configure({
+    API: {
+      GraphQL: {
+        endpoint: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT,
+        region: process.env.AWS_REGION || 'us-east-1',
+        defaultAuthMode: 'apiKey',
+        apiKey: process.env.AMPLIFY_DATA_API_KEY
+      }
+    }
+  });
+}
+
+// Initialize client
 const getClient = () => generateClient<Schema>({ authMode: 'apiKey' });
 
 /**
