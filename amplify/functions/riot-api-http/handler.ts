@@ -1,11 +1,18 @@
 import type { Handler } from 'aws-lambda';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { RiotRegion, RiotPlatformId } from '../../types/riot/index';
 
 if (!process.env.RIOT_API_KEY) {
   throw new Error('RIOT_API_KEY environment variable is required');
 }
 
+if (!process.env.MATCH_CACHE_BUCKET_NAME) {
+  throw new Error('MATCH_CACHE_BUCKET_NAME environment variable is required');
+}
+
 const API_KEY = process.env.RIOT_API_KEY;
+const BUCKET_NAME = process.env.MATCH_CACHE_BUCKET_NAME;
+const s3Client = new S3Client({});
 
 /**
  * Maps platform ID to region
@@ -40,6 +47,110 @@ function get365DaysAgoTimestamp(): number {
   const daysInMilliseconds = 365 * 24 * 60 * 60 * 1000;
   const timestamp365DaysAgo = now - daysInMilliseconds;
   return Math.floor(timestamp365DaysAgo / 1000);
+}
+
+/**
+ * Get cached match data from S3
+ */
+async function getCachedMatch(matchId: string): Promise<any | null> {
+  try {
+    const key = `matches/${matchId}.json`;
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+    const response = await s3Client.send(command);
+    if (response.Body) {
+      const bodyString = await response.Body.transformToString();
+      return JSON.parse(bodyString);
+    }
+    return null;
+  } catch (error: any) {
+    // If object doesn't exist, return null (not an error)
+    if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    console.warn(`Error reading cached match ${matchId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get cached timeline data from S3
+ */
+async function getCachedTimeline(matchId: string): Promise<any | null> {
+  try {
+    const key = `timelines/${matchId}.json`;
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+    const response = await s3Client.send(command);
+    if (response.Body) {
+      const bodyString = await response.Body.transformToString();
+      return JSON.parse(bodyString);
+    }
+    return null;
+  } catch (error: any) {
+    // If object doesn't exist, return null (not an error)
+    if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    console.warn(`Error reading cached timeline ${matchId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Cache match data to S3 with 1-year expiration metadata
+ */
+async function cacheMatch(matchId: string, data: any): Promise<void> {
+  try {
+    const key = `matches/${matchId}.json`;
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: JSON.stringify(data),
+      ContentType: 'application/json',
+      Metadata: {
+        'expires-at': expiresAt.toISOString(),
+        'cached-at': new Date().toISOString(),
+      },
+    });
+    await s3Client.send(command);
+  } catch (error) {
+    console.warn(`Error caching match ${matchId}:`, error);
+    // Don't throw - caching failure shouldn't break the API call
+  }
+}
+
+/**
+ * Cache timeline data to S3 with 1-year expiration metadata
+ */
+async function cacheTimeline(matchId: string, data: any): Promise<void> {
+  try {
+    const key = `timelines/${matchId}.json`;
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: JSON.stringify(data),
+      ContentType: 'application/json',
+      Metadata: {
+        'expires-at': expiresAt.toISOString(),
+        'cached-at': new Date().toISOString(),
+      },
+    });
+    await s3Client.send(command);
+  } catch (error) {
+    console.warn(`Error caching timeline ${matchId}:`, error);
+    // Don't throw - caching failure shouldn't break the API call
+  }
 }
 
 /**
@@ -145,6 +256,15 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
     // Handle getMatchDetails query
     if (fieldName === 'getMatchDetails' && args.matchId) {
+      // Check S3 cache first
+      const cachedMatch = await getCachedMatch(args.matchId);
+      if (cachedMatch) {
+        console.log(`Cache hit for match ${args.matchId}`);
+        return cachedMatch;
+      }
+
+      // Cache miss - fetch from Riot API
+      console.log(`Cache miss for match ${args.matchId}, fetching from API`);
       const platformId = args.platformId || 'na1';
       const region = getRegionFromPlatform(platformId);
       const url = `https://${region}.api.riotgames.com/lol/match/v5/matches/${args.matchId}`;
@@ -163,11 +283,27 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
         throw new Error(errorMessage);
       }
 
-      return await response.json();
+      const matchData = await response.json();
+      
+      // Cache the response (fire and forget)
+      cacheMatch(args.matchId, matchData).catch(err => 
+        console.warn(`Failed to cache match ${args.matchId}:`, err)
+      );
+
+      return matchData;
     }
 
     // Handle getMatchTimeline query
     if (fieldName === 'getMatchTimeline' && args.matchId) {
+      // Check S3 cache first
+      const cachedTimeline = await getCachedTimeline(args.matchId);
+      if (cachedTimeline) {
+        console.log(`Cache hit for timeline ${args.matchId}`);
+        return cachedTimeline;
+      }
+
+      // Cache miss - fetch from Riot API
+      console.log(`Cache miss for timeline ${args.matchId}, fetching from API`);
       const platformId = args.platformId || 'na1';
       const region = getRegionFromPlatform(platformId);
       const url = `https://${region}.api.riotgames.com/lol/match/v5/matches/${args.matchId}/timeline`;
@@ -186,7 +322,14 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
         throw new Error(errorMessage);
       }
 
-      return await response.json();
+      const timelineData = await response.json();
+      
+      // Cache the response (fire and forget)
+      cacheTimeline(args.matchId, timelineData).catch(err => 
+        console.warn(`Failed to cache timeline ${args.matchId}:`, err)
+      );
+
+      return timelineData;
     }
 
     // Handle getAccountByPuuid query

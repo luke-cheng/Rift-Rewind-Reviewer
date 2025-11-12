@@ -145,6 +145,25 @@ const schema = a.schema({
     .handler(a.handler.function(dataProcessorFunction))
     .authorization((allow) => [allow.publicApiKey()]),
 
+  processMatch: a
+    .mutation()
+    .arguments({
+      matchData: a.json().required(), // Match data from Riot API
+    })
+    .returns(a.json())
+    .handler(a.handler.function(dataProcessorFunction))
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  aggregatePlayerStats: a
+    .mutation()
+    .arguments({
+      puuid: a.string().required(),
+      platformId: a.string(), // Optional: platform ID for Riot API
+    })
+    .returns(a.json())
+    .handler(a.handler.function(dataProcessorFunction))
+    .authorization((allow) => [allow.publicApiKey()]),
+
   // AI Generation route for player stats insights, use for player profile page
   generatePlayerInsights: a
     .generation({

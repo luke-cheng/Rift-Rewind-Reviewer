@@ -4,6 +4,6 @@ import { createAIHooks } from "@aws-amplify/ui-react-ai";
 
 // Generate client with explicit apiKey auth mode
 export const client = generateClient<Schema>({
-  authMode: 'apiKey'
+  authMode: 'apiKey',
 });
 export const { useAIConversation, useAIGeneration } = createAIHooks(client);

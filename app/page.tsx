@@ -4,6 +4,7 @@ import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import { View, Flex, Text } from "@aws-amplify/ui-react";
 
+
 export default function HomePage() {
   return (
     <View width="100%" minHeight="100vh" backgroundColor="background.primary">
