@@ -23,44 +23,6 @@ export enum RiotRegion {
 }
 
 /**
- * Riot API Platform IDs (for match history)
- */
-export enum RiotPlatformId {
-  /** Brazil */
-  BR1 = 'br1',
-  /** Europe Nordic & East */
-  EUN1 = 'eun1',
-  /** Europe West */
-  EUW1 = 'euw1',
-  /** Japan */
-  JP1 = 'jp1',
-  /** Korea */
-  KR = 'kr',
-  /** Latin America North */
-  LA1 = 'la1',
-  /** Latin America South */
-  LA2 = 'la2',
-  /** North America */
-  NA1 = 'na1',
-  /** Oceania */
-  OC1 = 'oc1',
-  /** Philippines */
-  PH2 = 'ph2',
-  /** Russia */
-  RU = 'ru',
-  /** Singapore */
-  SG2 = 'sg2',
-  /** Thailand */
-  TH2 = 'th2',
-  /** Turkey */
-  TR1 = 'tr1',
-  /** Taiwan */
-  TW2 = 'tw2',
-  /** Vietnam */
-  VN2 = 'vn2',
-}
-
-/**
  * Match Queue IDs
  */
 export enum MatchQueueId {

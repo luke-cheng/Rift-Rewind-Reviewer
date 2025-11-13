@@ -22,58 +22,53 @@ export default function AIInsightIndicator({ insights }: AIInsightIndicatorProps
     ? "info" 
     : undefined;
 
+  const handleMouseEnter = () => setIsHovered(true);
+  const handleMouseLeave = () => setIsHovered(false);
+
   return (
     <View
       position="relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <Badge
         variation={badgeVariation}
         fontSize="x-small"
-        style={{
-          cursor: "pointer",
-          transition: "opacity 0.2s",
-        }}
+        style={{ cursor: "pointer", transition: "opacity 0.2s" }}
       >
         {insights.summary || "✨"}
       </Badge>
 
-      <View
-        position="absolute"
-        top="0"
-        left="100%"
-        marginLeft="small"
-        backgroundColor="background.primary"
-        padding="small"
-        borderRadius="small"
-        boxShadow="large"
-        style={{
-          zIndex: 1000,
-          minWidth: "200px",
-          maxWidth: "300px",
-          opacity: isHovered ? 1 : 0,
-          pointerEvents: isHovered ? "auto" : "none",
-          transform: isHovered ? "translateX(0)" : "translateX(-5px)",
-          transition: "opacity 0.2s ease-in, transform 0.2s ease-in",
-          visibility: isHovered ? "visible" : "hidden",
-        }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <Flex direction="column" gap="xs">
-          {insights.summary && (
-            <Flex direction="row" gap="xs" style={{ flexWrap: "wrap" }}>
+      {isHovered && (
+        <View
+          position="absolute"
+          top="0"
+          left="100%"
+          marginLeft="small"
+          backgroundColor="background.primary"
+          padding="small"
+          borderRadius="small"
+          boxShadow="large"
+          style={{
+            zIndex: 1000,
+            minWidth: "200px",
+            maxWidth: "300px",
+          }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <Flex direction="column" gap="xs">
+            {insights.summary && (
               <AIMatchTag summary={insights.summary} severity={insights.severity} />
-            </Flex>
-          )}
-          {insights.analysis && (
-            <Text fontSize="small" color="font.primary">
-              {insights.analysis}
-            </Text>
-          )}
-        </Flex>
-      </View>
+            )}
+            {insights.analysis && (
+              <Text fontSize="small" color="font.primary">
+                {insights.analysis}
+              </Text>
+            )}
+          </Flex>
+        </View>
+      )}
     </View>
   );
 }

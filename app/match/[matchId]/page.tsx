@@ -1,64 +1,79 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { client } from "@/app/client";
+import { useParams } from "next/navigation";
+import { client } from "@/client";
 import { MatchData } from "@/components/types";
 import { View, Text, Card, Flex, Badge } from "@aws-amplify/ui-react";
 import AIInsightIndicator from "@/components/AIInsightIndicator";
-import NavBar from "@/components/NavBar";
-import Footer from "@/components/Footer";
+import PageLayout from "@/components/PageLayout";
 import { useToast } from "@/context/ToastContext";
 
-async function fetchMatchDetails(matchId: string): Promise<MatchData | null> {
+function parseJsonField(field: any): any {
+  if (typeof field === "string") {
+    try {
+      return JSON.parse(field);
+    } catch {
+      return null;
+    }
+  }
+  return field;
+}
+
+async function fetchMatchDetails(matchId: string, region?: string): Promise<MatchData | null> {
   try {
-    // Query MatchCache model by matchId using Amplify Gen 2 client
-    const { data, errors } = await client.models.MatchCache.get({
+    // First, check DynamoDB MatchCache
+    const { data, errors } = await client.models.MatchCache.get({ matchId });
+
+    if (!errors && data) {
+      const matchData = parseJsonField(data.matchData);
+      // Check if matchData is valid (not null/empty)
+      if (matchData && typeof matchData === 'object' && Object.keys(matchData).length > 0) {
+        return {
+          matchId: data.matchId,
+          gameCreation: data.gameCreation,
+          matchData: matchData,
+          timelineData: parseJsonField(data.timelineData),
+          expiresAt: data.expiresAt ?? undefined,
+          processedAt: data.processedAt ?? undefined,
+          aiInsights: data.aiInsights as MatchData["aiInsights"],
+        };
+      }
+    }
+
+    // If DynamoDB is empty or missing, fallback to GraphQL query
+    // This will check DynamoDB → S3 → Riot API
+    console.log(`Match ${matchId} not found in DynamoDB or empty, fetching via GraphQL query`);
+    const { data: matchDetails, errors: queryErrors } = await client.queries.getMatchDetails({
       matchId,
+      region: region || 'americas',
     });
 
-    if (errors || !data) {
+    if (queryErrors || !matchDetails) {
       return null;
     }
 
-    // Parse matchData if it's a string, otherwise use as-is
-    let parsedMatchData: any = data.matchData;
-    if (typeof data.matchData === 'string') {
-      try {
-        parsedMatchData = JSON.parse(data.matchData);
-      } catch {
-        parsedMatchData = null;
-      }
-    }
-
-    // Parse timelineData if it's a string, otherwise use as-is
-    let parsedTimelineData: any = data.timelineData;
-    if (data.timelineData && typeof data.timelineData === 'string') {
-      try {
-        parsedTimelineData = JSON.parse(data.timelineData);
-      } catch {
-        parsedTimelineData = null;
-      }
-    }
-
-    // Map the data to MatchData interface
+    // Parse the match data if needed
+    const parsedMatchData = parseJsonField(matchDetails);
+    
+    // Return a MatchData structure with the fetched data
     return {
-      matchId: data.matchId,
-      gameCreation: data.gameCreation,
+      matchId,
+      gameCreation: parsedMatchData?.info?.gameCreation || Date.now(),
       matchData: parsedMatchData,
-      timelineData: parsedTimelineData,
-      expiresAt: data.expiresAt ?? undefined,
-      processedAt: data.processedAt ?? undefined,
-      aiInsights: data.aiInsights as MatchData['aiInsights'],
+      timelineData: undefined,
+      expiresAt: undefined,
+      processedAt: undefined,
+      aiInsights: undefined,
     };
-  } catch {
+  } catch (error) {
+    console.error('Error fetching match details:', error);
     return null;
   }
 }
 
 export default function MatchDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const matchId = params?.matchId as string;
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,85 +102,23 @@ export default function MatchDetailPage() {
       });
   }, [matchId, showError]);
 
-  const handlePlayerSelect = (puuid: string) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("selectedPuuid", puuid);
-    }
-    router.push(`/player/${puuid}`);
-  };
-
   if (isLoading) {
     return (
-      <View width="100%" minHeight="100vh" backgroundColor="background.primary">
-        <Flex direction="column" minHeight="100vh">
-          <NavBar onPlayerSelect={handlePlayerSelect} />
-          <View
-            flex="1"
-            width="100%"
-            maxWidth="1200px"
-            margin="0 auto"
-            paddingLeft={{ base: "medium", large: "large" }}
-            paddingRight={{ base: "medium", large: "large" }}
-            paddingTop="large"
-            paddingBottom="large"
-          >
-            <View padding="large" textAlign="center">
-              <Text>Loading match details...</Text>
-            </View>
-          </View>
-          <Footer />
-        </Flex>
-      </View>
+      <PageLayout>
+        <View padding="large" textAlign="center">
+          <Text>Loading match details...</Text>
+        </View>
+      </PageLayout>
     );
   }
 
-  if (error) {
+  if (error || !matchData) {
     return (
-      <View width="100%" minHeight="100vh" backgroundColor="background.primary">
-        <Flex direction="column" minHeight="100vh">
-          <NavBar onPlayerSelect={handlePlayerSelect} />
-          <View
-            flex="1"
-            width="100%"
-            maxWidth="1200px"
-            margin="0 auto"
-            paddingLeft={{ base: "medium", large: "large" }}
-            paddingRight={{ base: "medium", large: "large" }}
-            paddingTop="large"
-            paddingBottom="large"
-          >
-            <View padding="large" textAlign="center">
-              <Text color="font.error">{error}</Text>
-            </View>
-          </View>
-          <Footer />
-        </Flex>
-      </View>
-    );
-  }
-
-  if (!matchData) {
-    return (
-      <View width="100%" minHeight="100vh" backgroundColor="background.primary">
-        <Flex direction="column" minHeight="100vh">
-          <NavBar onPlayerSelect={handlePlayerSelect} />
-          <View
-            flex="1"
-            width="100%"
-            maxWidth="1200px"
-            margin="0 auto"
-            paddingLeft={{ base: "medium", large: "large" }}
-            paddingRight={{ base: "medium", large: "large" }}
-            paddingTop="large"
-            paddingBottom="large"
-          >
-            <View padding="large" textAlign="center">
-              <Text>Match not found</Text>
-            </View>
-          </View>
-          <Footer />
-        </Flex>
-      </View>
+      <PageLayout>
+        <View padding="large" textAlign="center">
+          <Text color="font.error">{error || "Match not found"}</Text>
+        </View>
+      </PageLayout>
     );
   }
 
@@ -173,25 +126,14 @@ export default function MatchDetailPage() {
   const participants = matchInfo?.participants || [];
 
   return (
-    <View width="100%" minHeight="100vh" backgroundColor="background.primary">
-      <Flex direction="column" minHeight="100vh">
-        {/* NavBar */}
-        <NavBar onPlayerSelect={handlePlayerSelect} />
-
-        {/* Main content */}
-        <View
-          flex="1"
-          width="100%"
-          maxWidth="1200px"
-          margin="0 auto"
-          paddingLeft={{ base: "medium", large: "large" }}
-          paddingRight={{ base: "medium", large: "large" }}
-          paddingTop="large"
-          paddingBottom="large"
-        >
-          <Flex direction="column" gap="large">
+    <PageLayout>
+      <Flex direction="column" gap="large">
             <Card variation="outlined" padding="medium">
-              <Flex direction="row" justifyContent="space-between" alignItems="center">
+              <Flex
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
                 <View>
                   <Text fontSize="2xl" fontWeight="bold">
                     Match Details
@@ -220,7 +162,9 @@ export default function MatchDetailPage() {
                     <Text>Queue ID: {matchInfo.queueId}</Text>
                     <Text>
                       Duration: {Math.floor(matchInfo.gameDuration / 60)}:
-                      {(matchInfo.gameDuration % 60).toString().padStart(2, "0")}
+                      {(matchInfo.gameDuration % 60)
+                        .toString()
+                        .padStart(2, "0")}
                     </Text>
                     <Text>Game Version: {matchInfo.gameVersion}</Text>
                   </Flex>
@@ -233,25 +177,36 @@ export default function MatchDetailPage() {
                   <Flex direction="column" gap="small">
                     {participants.map((participant: any, index: number) => (
                       <Card key={index} variation="elevated" padding="small">
-                        <Flex direction="row" justifyContent="space-between" alignItems="center">
+                        <Flex
+                          direction="row"
+                          justifyContent="space-between"
+                          alignItems="center"
+                        >
                           <View>
-                            <Text fontWeight="bold">{participant.championName}</Text>
+                            <Text fontWeight="bold">
+                              {participant.championName}
+                            </Text>
                             <Text color="font.secondary">
-                              {participant.riotIdName}#{participant.riotIdTagline}
+                              {participant.riotIdName}#
+                              {participant.riotIdTagline}
                             </Text>
                             <Text color="font.secondary">
                               {participant.teamPosition} • {participant.lane}
                             </Text>
                           </View>
                           <View>
-                            <Badge variation={participant.win ? "success" : "error"}>
+                            <Badge
+                              variation={participant.win ? "success" : "error"}
+                            >
                               {participant.win ? "Victory" : "Defeat"}
                             </Badge>
                             <Text marginTop="xs">
-                              {participant.kills}/{participant.deaths}/{participant.assists}
+                              {participant.kills}/{participant.deaths}/
+                              {participant.assists}
                             </Text>
                             <Text color="font.secondary" fontSize="small">
-                              KDA: {(
+                              KDA:{" "}
+                              {(
                                 (participant.kills + participant.assists) /
                                 (participant.deaths || 1)
                               ).toFixed(2)}
@@ -275,13 +230,7 @@ export default function MatchDetailPage() {
                 </Text>
               </Card>
             )}
-          </Flex>
-        </View>
-
-        {/* Footer */}
-        <Footer />
       </Flex>
-    </View>
+    </PageLayout>
   );
 }
-

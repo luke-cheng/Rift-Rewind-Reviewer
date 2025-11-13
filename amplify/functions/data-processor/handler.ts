@@ -2,25 +2,34 @@ import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../data/resource';
 import type { MatchDto, ParticipantDto, MatchInfoDto } from '../../types/riot/match-v5';
+import outputs from "../../../amplify_outputs.json";
 
-// Configure Amplify with environment-based resource configuration
-// This is required before calling generateClient() in Lambda functions
-// Amplify automatically provides these environment variables when the function is deployed
-if (process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT) {
-  Amplify.configure({
-    API: {
-      GraphQL: {
-        endpoint: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT,
-        region: process.env.AWS_REGION || 'us-east-1',
-        defaultAuthMode: 'apiKey',
-        apiKey: process.env.AMPLIFY_DATA_API_KEY
-      }
-    }
-  });
-}
+Amplify.configure(outputs);
 
 // Initialize client
 const getClient = () => generateClient<Schema>({ authMode: 'apiKey' });
+
+/**
+ * Calculate TTL timestamp (1 day from now in seconds)
+ */
+function getTTLTimestamp(): number {
+  const now = Date.now();
+  const oneDayInMilliseconds = 24 * 60 * 60 * 1000;
+  const ttlTimestamp = now + oneDayInMilliseconds;
+  return Math.floor(ttlTimestamp / 1000);
+}
+
+/**
+ * Validate if match data is valid (not null/empty/undefined)
+ */
+function isValidMatchData(data: any): boolean {
+  if (data == null) return false;
+  if (typeof data !== 'object') return false;
+  if (Object.keys(data).length === 0) return false;
+  // Check for required Riot API match structure
+  if (!data.metadata?.matchId && !data.info) return false;
+  return true;
+}
 
 /**
  * Pure function: Process match data and return structures for storage
@@ -67,7 +76,7 @@ export function processMatchData(matchData: MatchDto): {
   const participants: ParticipantDto[] = info?.participants || [];
   const gameCreation = info?.gameCreation;
   const gameDuration = info?.gameDuration;
-  
+
   if (!matchId || !gameCreation || !participants || participants.length === 0) {
     throw new Error('Invalid match data: missing required fields (matchId, gameCreation, or participants)');
   }
@@ -82,8 +91,8 @@ export function processMatchData(matchData: MatchDto): {
   const participantData = participants
     .filter(participant => participant && participant.puuid)
     .map(participant => {
-      const kda = participant.deaths > 0 
-        ? (participant.kills + participant.assists) / participant.deaths 
+      const kda = participant.deaths > 0
+        ? (participant.kills + participant.assists) / participant.deaths
         : participant.kills + participant.assists;
 
       return {
@@ -240,8 +249,8 @@ export function aggregateStatsForPlayer(participants: Array<{
   // Calculate KDA for each champion
   const championStatsWithKDA: Record<string, any> = {};
   for (const [champId, stats] of Object.entries(championStats)) {
-    const champKDA = stats.deaths > 0 
-      ? (stats.kills + stats.assists) / stats.deaths 
+    const champKDA = stats.deaths > 0
+      ? (stats.kills + stats.assists) / stats.deaths
       : stats.kills + stats.assists;
     championStatsWithKDA[champId] = {
       ...stats,
@@ -280,14 +289,32 @@ export function aggregateStatsForPlayer(participants: Array<{
  */
 async function handleProcessMatch(args: { matchData: any }) {
   const client = getClient();
-  const { matchCacheData, participantData } = processMatchData(args.matchData as MatchDto);
   
-  // Store match in MatchCache
+  // Validate match data before processing
+  if (!isValidMatchData(args.matchData)) {
+    throw new Error('Invalid match data: matchData is null, empty, or missing required fields');
+  }
+  
+  const { matchCacheData, participantData } = processMatchData(args.matchData as MatchDto);
+
+  // Store match in MatchCache with TTL
   try {
-    await client.models.MatchCache.create(matchCacheData);
+    await client.models.MatchCache.create({
+      ...matchCacheData,
+      ttl: getTTLTimestamp(),
+    });
   } catch (error: any) {
     if (error?.message?.includes('already exists') || error?.message?.includes('duplicate')) {
-      console.warn(`Match ${matchCacheData.matchId} already exists in cache, skipping cache update`);
+      console.warn(`Match ${matchCacheData.matchId} already exists in cache, updating with TTL`);
+      // Update with TTL
+      try {
+        await client.models.MatchCache.update({
+          matchId: matchCacheData.matchId,
+          ttl: getTTLTimestamp(),
+        });
+      } catch (updateError) {
+        console.warn(`Failed to update TTL for match ${matchCacheData.matchId}:`, updateError);
+      }
     } else {
       throw error;
     }
@@ -303,27 +330,35 @@ async function handleProcessMatch(args: { matchData: any }) {
       if (result.data) {
         successCount++;
       } else if (result.errors) {
-        const isDuplicate = result.errors.some(err => 
-          err.message?.includes('already exists') || 
-          err.message?.includes('duplicate')
-        );
+        console.error(`Error creating participant - result.errors:`, JSON.stringify(result.errors, null, 2));
+        const isDuplicate = Array.isArray(result.errors) 
+          ? result.errors.some((err: any) =>
+              err?.message?.includes('already exists') ||
+              err?.message?.includes('duplicate')
+            )
+          : (typeof result.errors === 'object' && result.errors !== null && 
+             ('message' in result.errors && 
+              ((result.errors as any).message?.includes('already exists') || (result.errors as any).message?.includes('duplicate'))));
         if (isDuplicate) {
           console.warn(`Participant ${participant.puuid} in match ${participant.matchId} already exists, skipping`);
           skippedCount++;
         } else {
-          throw new Error(result.errors.map(e => e.message).join(', '));
+          const errorMessage = Array.isArray(result.errors)
+            ? result.errors.map((e: any) => e?.message || JSON.stringify(e)).join(', ')
+            : JSON.stringify(result.errors);
+          throw new Error(errorMessage);
         }
       }
     } catch (error: any) {
+      console.error(`Error creating participant record:`, JSON.stringify({
+        matchId: participant.matchId,
+        puuid: participant.puuid,
+        error: error
+      }, Object.getOwnPropertyNames(error), 2));
       if (error?.message?.includes('already exists') || error?.message?.includes('duplicate')) {
         console.warn(`Participant ${participant.puuid} in match ${participant.matchId} already exists, skipping`);
         skippedCount++;
       } else {
-        console.error(`Error creating participant record:`, {
-          matchId: participant.matchId,
-          puuid: participant.puuid,
-          error: error?.message || String(error)
-        });
         throw error;
       }
     }
@@ -340,10 +375,10 @@ async function handleProcessMatch(args: { matchData: any }) {
 /**
  * Handle aggregatePlayerStats mutation
  */
-async function handleAggregatePlayerStats(args: { puuid: string; platformId?: string }) {
+async function handleAggregatePlayerStats(args: { puuid: string; region?: string }) {
   const client = getClient();
   const { puuid } = args;
-  
+
   // Fetch all match participants for this player
   const { data: participants, errors } = await client.models.MatchParticipantIndex.list({
     filter: { puuid: { eq: puuid } },
@@ -370,7 +405,7 @@ async function handleAggregatePlayerStats(args: { puuid: string; platformId?: st
       puuid,
       region: 'americas',
     });
-    
+
     if (!accountErrors && accountData) {
       const account = accountData as { gameName: string; tagLine: string; puuid: string };
       if (account && account.gameName && account.tagLine) {
@@ -407,7 +442,7 @@ async function handleAggregatePlayerStats(args: { puuid: string; platformId?: st
 
   try {
     const { data: existingStat } = await client.models.PlayerStat.get({ puuid });
-    
+
     if (existingStat) {
       await client.models.PlayerStat.update({
         puuid,
@@ -443,22 +478,22 @@ async function handleAggregatePlayerStats(args: { puuid: string; platformId?: st
 /**
  * Handle processMatches mutation
  */
-async function handleProcessMatches(args: { 
-  puuid: string; 
-  matches?: any; 
-  matchIds?: string[]; 
-  count?: number; 
-  platformId?: string;
+async function handleProcessMatches(args: {
+  puuid: string;
+  matches?: any;
+  matchIds?: string[];
+  count?: number;
+  region?: string;
 }) {
   const client = getClient();
-  const { puuid, matches, matchIds, count, platformId } = args;
-  
+  const { puuid, matches, matchIds, count, region } = args;
+
   let matchesToProcess: MatchDto[] = [];
-  
+
   // If matches are provided directly, use them
   if (matches && Array.isArray(matches) && matches.length > 0) {
     matchesToProcess = matches as MatchDto[];
-  } 
+  }
   // If match IDs are provided, fetch match details for each using GraphQL queries
   else if (matchIds && Array.isArray(matchIds) && matchIds.length > 0) {
     console.log(`Fetching ${matchIds.length} match details via GraphQL...`);
@@ -467,16 +502,28 @@ async function handleProcessMatches(args: {
         try {
           const { data, errors } = await client.queries.getMatchDetails({
             matchId,
-            platformId: platformId || 'na1',
+            region: region || 'americas',
           });
-          
+
           if (errors || !data) {
-            throw new Error(errors ? errors.map(e => e.message).join(', ') : 'No data returned');
+            console.error(`Error fetching match ${matchId} - errors:`, JSON.stringify(errors, null, 2));
+            console.error(`Error fetching match ${matchId} - data:`, JSON.stringify(data, null, 2));
+            let errorMessage = 'No data returned';
+            if (errors) {
+              if (Array.isArray(errors)) {
+                errorMessage = errors.map((e: any) => e?.message || JSON.stringify(e)).join(', ');
+              } else if (typeof errors === 'object' && errors !== null) {
+                errorMessage = JSON.stringify(errors);
+              } else {
+                errorMessage = String(errors);
+              }
+            }
+            throw new Error(errorMessage);
           }
-          
+
           return data as MatchDto;
         } catch (error) {
-          console.error(`Failed to fetch match ${matchId}:`, error);
+          console.error(`Failed to fetch match ${matchId}:`, JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
           throw error;
         }
       })
@@ -488,18 +535,30 @@ async function handleProcessMatches(args: {
     try {
       const { data: matchIdsData, errors: matchIdsErrors } = await client.queries.fetchMatchIds({
         puuid,
-        platformId: platformId || 'na1',
-        count: count || 20,
+        region: region || 'americas',
+        count: count || 100,
         start: 0,
       });
-      
+
+      console.error(`fetchMatchIds response - data:`, JSON.stringify(matchIdsData, null, 2));
+      console.error(`fetchMatchIds response - errors:`, JSON.stringify(matchIdsErrors, null, 2));
+
       if (matchIdsErrors) {
-        throw new Error(matchIdsErrors.map(e => e.message).join(', '));
+        let errorMessage = 'Failed to fetch match IDs';
+        if (Array.isArray(matchIdsErrors)) {
+          errorMessage = matchIdsErrors.map((e: any) => e?.message || JSON.stringify(e)).join(', ');
+        } else if (typeof matchIdsErrors === 'object' && matchIdsErrors !== null) {
+          errorMessage = JSON.stringify(matchIdsErrors);
+        } else {
+          errorMessage = String(matchIdsErrors);
+        }
+        throw new Error(errorMessage);
       }
-      
+
       const matchIdsList = matchIdsData as string[];
-      
-      if (!matchIdsList || matchIdsList.length === 0) {
+
+      if (!matchIdsList || !Array.isArray(matchIdsList) || matchIdsList.length === 0) {
+        console.error(`matchIdsList is not an array or is empty:`, JSON.stringify(matchIdsList, null, 2));
         return {
           success: true,
           processed: 0,
@@ -507,33 +566,45 @@ async function handleProcessMatches(args: {
           message: 'No matches found for this player in the last year',
         };
       }
-      
+
       console.log(`Found ${matchIdsList.length} matches from the last year, fetching details via GraphQL...`);
       matchesToProcess = await Promise.all(
         matchIdsList.map(async (matchId: string) => {
           try {
             const { data, errors } = await client.queries.getMatchDetails({
               matchId,
-              platformId: platformId || 'na1',
+              region: region || 'americas',
             });
-            
+
             if (errors || !data) {
-              throw new Error(errors ? errors.map(e => e.message).join(', ') : 'No data returned');
+              console.error(`Error fetching match ${matchId} - errors:`, JSON.stringify(errors, null, 2));
+              console.error(`Error fetching match ${matchId} - data:`, JSON.stringify(data, null, 2));
+              let errorMessage = 'No data returned';
+              if (errors) {
+                if (Array.isArray(errors)) {
+                  errorMessage = errors.map((e: any) => e?.message || JSON.stringify(e)).join(', ');
+                } else if (typeof errors === 'object' && errors !== null) {
+                  errorMessage = JSON.stringify(errors);
+                } else {
+                  errorMessage = String(errors);
+                }
+              }
+              throw new Error(errorMessage);
             }
-            
+
             return data as MatchDto;
           } catch (error) {
-            console.error(`Failed to fetch match ${matchId}:`, error);
+            console.error(`Failed to fetch match ${matchId}:`, JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
             throw error;
           }
         })
       );
     } catch (error) {
-      console.error('Failed to fetch match history:', error);
+      console.error('Failed to fetch match history:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
       throw error;
     }
   }
-  
+
   if (matchesToProcess.length === 0) {
     return {
       success: true,
@@ -542,46 +613,82 @@ async function handleProcessMatches(args: {
       message: 'No matches to process',
     };
   }
-  
+
   console.log(`Processing ${matchesToProcess.length} matches...`);
-  
+
   // Process each match using the pure function
   const results = await Promise.all(
     matchesToProcess.map(async (matchData: MatchDto) => {
-      const { matchCacheData, participantData } = processMatchData(matchData);
+      // Validate match data before processing
+      if (!isValidMatchData(matchData)) {
+        console.warn(`Skipping invalid match data for match ${matchData?.metadata?.matchId || 'unknown'}`);
+        return {
+          matchId: matchData?.metadata?.matchId || 'unknown',
+          success: false,
+          participantsProcessed: 0,
+          participantsSkipped: 0,
+        };
+      }
       
-      // Store match in MatchCache
+      const { matchCacheData, participantData } = processMatchData(matchData);
+
+      // Store match in MatchCache with TTL
       try {
-        await client.models.MatchCache.create(matchCacheData);
+        await client.models.MatchCache.create({
+          ...matchCacheData,
+          ttl: getTTLTimestamp(),
+        });
       } catch (error: any) {
         if (error?.message?.includes('already exists') || error?.message?.includes('duplicate')) {
-          console.warn(`Match ${matchCacheData.matchId} already exists in cache, skipping cache update`);
+          console.warn(`Match ${matchCacheData.matchId} already exists in cache, updating with TTL`);
+          // Update with TTL
+          try {
+            await client.models.MatchCache.update({
+              matchId: matchCacheData.matchId,
+              ttl: getTTLTimestamp(),
+            });
+          } catch (updateError) {
+            console.warn(`Failed to update TTL for match ${matchCacheData.matchId}:`, updateError);
+          }
         } else {
           throw error;
         }
       }
-      
+
       // Store participants
       let successCount = 0;
       let skippedCount = 0;
-      
+
       for (const participant of participantData) {
         try {
           const result = await client.models.MatchParticipantIndex.create(participant);
           if (result.data) {
             successCount++;
           } else if (result.errors) {
-            const isDuplicate = result.errors.some(err => 
-              err.message?.includes('already exists') || 
-              err.message?.includes('duplicate')
-            );
+            console.error(`Error creating participant - result.errors:`, JSON.stringify(result.errors, null, 2));
+            const isDuplicate = Array.isArray(result.errors) 
+              ? result.errors.some((err: any) =>
+                  err?.message?.includes('already exists') ||
+                  err?.message?.includes('duplicate')
+                )
+              : (typeof result.errors === 'object' && result.errors !== null && 
+                 ('message' in result.errors && 
+                  ((result.errors as any).message?.includes('already exists') || (result.errors as any).message?.includes('duplicate'))));
             if (isDuplicate) {
               skippedCount++;
             } else {
-              throw new Error(result.errors.map(e => e.message).join(', '));
+              const errorMessage = Array.isArray(result.errors)
+                ? result.errors.map((e: any) => e?.message || JSON.stringify(e)).join(', ')
+                : JSON.stringify(result.errors);
+              throw new Error(errorMessage);
             }
           }
         } catch (error: any) {
+          console.error(`Error creating participant record:`, JSON.stringify({
+            matchId: participant.matchId,
+            puuid: participant.puuid,
+            error: error
+          }, Object.getOwnPropertyNames(error), 2));
           if (error?.message?.includes('already exists') || error?.message?.includes('duplicate')) {
             skippedCount++;
           } else {
@@ -589,7 +696,7 @@ async function handleProcessMatches(args: {
           }
         }
       }
-      
+
       return {
         matchId: matchCacheData.matchId,
         success: true,
@@ -598,27 +705,27 @@ async function handleProcessMatches(args: {
       };
     })
   );
-  
+
   const successCount = results.filter(r => r.success).length;
   const totalParticipants = results.reduce((sum, r) => sum + (r.participantsProcessed || 0), 0);
-  
+
   // Aggregate player stats after processing matches
   console.log(`Aggregating player stats for puuid: ${puuid}...`);
   try {
     const { data: participants } = await client.models.MatchParticipantIndex.list({
       filter: { puuid: { eq: puuid } },
     });
-    
+
     if (participants && participants.length > 0) {
       const stats = aggregateStatsForPlayer(participants);
-      
+
       let riotId: { gameName: string; tagLine: string } | undefined;
       try {
         const { data: accountData } = await client.queries.getAccountByPuuid({
           puuid,
           region: 'americas',
         });
-        
+
         if (accountData) {
           const account = accountData as { gameName: string; tagLine: string };
           if (account.gameName && account.tagLine) {
@@ -628,17 +735,17 @@ async function handleProcessMatches(args: {
       } catch (error) {
         // Ignore
       }
-      
+
       const playerStatData: any = {
         puuid,
         ...stats,
         lastUpdated: Date.now(),
       };
-      
+
       if (riotId) {
         playerStatData.riotId = riotId;
       }
-      
+
       try {
         const { data: existingStat } = await client.models.PlayerStat.get({ puuid });
         if (existingStat) {
@@ -652,11 +759,11 @@ async function handleProcessMatches(args: {
         }
       }
     }
-  } catch (error) {
-    console.error('Error aggregating player stats:', error);
-    // Don't fail the entire operation if stats aggregation fails
-  }
-  
+    } catch (error) {
+      console.error('Error aggregating player stats:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      // Don't fail the entire operation if stats aggregation fails
+    }
+
   return {
     success: true,
     processed: successCount,
@@ -685,7 +792,7 @@ export const handler = async (event: GraphQLResolverEvent) => {
   const args = event.arguments || {};
   const info = event.info || {};
   const fieldName = info.fieldName || event.fieldName;
-  
+
   if (!fieldName) {
     console.error('No field name found in event');
     throw new Error('No field name found in GraphQL event');
@@ -696,15 +803,15 @@ export const handler = async (event: GraphQLResolverEvent) => {
       case 'processMatch':
         return await handleProcessMatch(args as { matchData: any });
       case 'processMatches':
-        return await handleProcessMatches(args as { 
-          puuid: string; 
-          matches?: any; 
-          matchIds?: string[]; 
-          count?: number; 
-          platformId?: string;
+        return await handleProcessMatches(args as {
+          puuid: string;
+          matches?: any;
+          matchIds?: string[];
+          count?: number;
+          region?: string;
         });
       case 'aggregatePlayerStats':
-        return await handleAggregatePlayerStats(args as { puuid: string; platformId?: string });
+        return await handleAggregatePlayerStats(args as { puuid: string; region?: string });
       default:
         throw new Error(`Unknown field: ${fieldName}`);
     }

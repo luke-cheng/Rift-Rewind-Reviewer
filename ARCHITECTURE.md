@@ -25,7 +25,6 @@ The Amplify Gen2 backend is defined using a code-first approach with TypeScript:
 **Key Files:**
 - `amplify/backend.ts` - Main backend definition that imports and configures all resources
 - `amplify/data/resource.ts` - Data schema with models, queries, mutations, and AI generation routes
-- `amplify/auth/resource.ts` - Authentication configuration (email-based login)
 - `amplify/storage/resource.ts` - S3 bucket for match data caching
 - `amplify/functions/` - Lambda function definitions
 

@@ -2,84 +2,58 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { View, Flex, Text } from "@aws-amplify/ui-react";
-import { client } from "@/app/client";
+import { View, Flex, Text, SelectField } from "@aws-amplify/ui-react";
+import { client } from "@/client";
+import { useRegion } from "@/context/RegionContext";
 import PlayerSearch from "./PlayerSearch";
-import { useToast } from "@/context/ToastContext";
 
-interface NavBarProps {
-  onPlayerSelect?: (puuid: string) => void;
-}
-
-export default function NavBar({ onPlayerSelect }: NavBarProps) {
+export default function NavBar() {
   const router = useRouter();
   const [isSearching, setIsSearching] = React.useState(false);
-  const { error: showError } = useToast();
+  const { region, setRegion } = useRegion();
 
   const handleSearch = async (gameName: string, tagLine: string) => {
     setIsSearching(true);
+
     try {
-      // Call the searchPlayer query through Amplify Gen 2
       const response = await client.queries.searchPlayer({
         gameName,
         tagLine,
+        region,
       });
-
-      // Log the full API response
-      console.error('API response from searchPlayer:', JSON.stringify(response, null, 2));
 
       const { data, errors } = response;
 
-      // Check for GraphQL errors
       if (errors) {
-        showError("Player not found. Please check the game name and tag line.");
         return;
       }
-
-
 
       if (!data) {
-        showError("Player not found. Please check the game name and tag line.");
         return;
       }
 
-      // The searchPlayer query should return an object with puuid
-      // Based on the schema, it returns a.json(), so we need to parse it
       let puuid: string | null = null;
-      if (typeof data === 'object' && data !== null && 'puuid' in data) {
-        puuid = (data as { puuid: string }).puuid;
-      } else if (typeof data === 'string') {
+
+      if (typeof data === "object" && data !== null) {
+        if ("puuid" in data) {
+          puuid = (data as { puuid: string }).puuid;
+        }
+      } else if (typeof data === "string") {
         try {
           const parsed = JSON.parse(data);
           puuid = parsed.puuid || null;
-        } catch {
-          // Invalid JSON, will handle below
+        } catch (parseError) {
+          // Failed to parse JSON
+          console.error("[DEBUG NavBar] Failed to parse JSON:", parseError);
         }
       }
 
       if (puuid) {
-        if (onPlayerSelect) {
-          onPlayerSelect(puuid);
-        }
         router.push(`/player/${puuid}`);
-      } else {
-        showError("Player not found. Please check the game name and tag line.");
       }
     } catch (error) {
-      // Log the full error with better error handling
-      console.error('Unexpected error in handleSearch:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error message:', error instanceof Error ? error.message : String(error));
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      
-      // Try to stringify with error replacer
-      try {
-        console.error('Error JSON:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      } catch (e) {
-        console.error('Could not stringify error:', e);
-      }
-      
-      showError("Error searching for player. Please try again.");
+      // Error handling
+      console.error("[DEBUG NavBar] Error searching player:", error);
     } finally {
       setIsSearching(false);
     }
@@ -111,11 +85,34 @@ export default function NavBar({ onPlayerSelect }: NavBarProps) {
         >
           Rift Rewind Reviewer
         </Text>
-        <View flex="1" minWidth="300px" maxWidth="500px">
-          <PlayerSearch onSearch={handleSearch} isLoading={isSearching} />
-        </View>
+        <Flex
+          direction="row"
+          alignItems="center"
+          gap="small"
+          flex="1"
+          minWidth="300px"
+          maxWidth="600px"
+          wrap="wrap"
+        >
+          <View minWidth="120px" maxWidth="150px">
+            <SelectField
+              label="Region"
+              labelHidden
+              value={region}
+              onChange={(e) => setRegion(e.target.value as "americas" | "asia" | "europe" | "sea")}
+              isDisabled={isSearching}
+            >
+              <option value="americas">Americas</option>
+              <option value="asia">Asia</option>
+              <option value="europe">Europe</option>
+              <option value="sea">SEA</option>
+            </SelectField>
+          </View>
+          <View flex="1" minWidth="200px">
+            <PlayerSearch onSearch={handleSearch} isLoading={isSearching} />
+          </View>
+        </Flex>
       </Flex>
     </View>
   );
 }
-

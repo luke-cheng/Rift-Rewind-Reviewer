@@ -1,6 +1,9 @@
 import type { Handler } from 'aws-lambda';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { RiotRegion, RiotPlatformId } from '../../types/riot/index';
+import { Amplify } from 'aws-amplify';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../data/resource';
+import { RiotRegion } from '../../types/riot/index';
 
 if (!process.env.RIOT_API_KEY) {
   throw new Error('RIOT_API_KEY environment variable is required');
@@ -14,30 +17,21 @@ const API_KEY = process.env.RIOT_API_KEY;
 const BUCKET_NAME = process.env.MATCH_CACHE_BUCKET_NAME;
 const s3Client = new S3Client({});
 
-/**
- * Maps platform ID to region
- */
-function getRegionFromPlatform(platformId: string): RiotRegion {
-  const platformToRegion: Record<string, RiotRegion> = {
-    'br1': RiotRegion.AMERICAS,
-    'la1': RiotRegion.AMERICAS,
-    'la2': RiotRegion.AMERICAS,
-    'na1': RiotRegion.AMERICAS,
-    'oc1': RiotRegion.AMERICAS,
-    'jp1': RiotRegion.ASIA,
-    'kr': RiotRegion.ASIA,
-    'ph2': RiotRegion.ASIA,
-    'sg2': RiotRegion.ASIA,
-    'th2': RiotRegion.ASIA,
-    'tw2': RiotRegion.ASIA,
-    'vn2': RiotRegion.ASIA,
-    'eun1': RiotRegion.EUROPE,
-    'euw1': RiotRegion.EUROPE,
-    'ru': RiotRegion.EUROPE,
-    'tr1': RiotRegion.EUROPE,
-  };
-  return platformToRegion[platformId] || RiotRegion.AMERICAS;
+// Initialize Amplify client for DynamoDB access
+// Note: In Lambda, Amplify Gen 2 automatically configures the client when function is used as handler
+// We use apiKey auth mode as Amplify provides the API key via environment variables
+// Try to configure Amplify with outputs if available (for local development)
+// In deployed Lambda, Amplify auto-configures via environment variables
+try {
+  const outputs = require('../../../amplify_outputs.json');
+  Amplify.configure(outputs);
+} catch (error) {
+  // If outputs not available (e.g., in deployed Lambda), Amplify will use env vars
+  console.log('amplify_outputs.json not found, using environment variables for Amplify configuration');
 }
+
+const getClient = () => generateClient<Schema>({ authMode: 'apiKey' });
+
 
 /**
  * Calculate Unix timestamp (in seconds) for 365 days ago
@@ -47,6 +41,109 @@ function get365DaysAgoTimestamp(): number {
   const daysInMilliseconds = 365 * 24 * 60 * 60 * 1000;
   const timestamp365DaysAgo = now - daysInMilliseconds;
   return Math.floor(timestamp365DaysAgo / 1000);
+}
+
+/**
+ * Calculate TTL timestamp (1 day from now in seconds)
+ */
+function getTTLTimestamp(): number {
+  const now = Date.now();
+  const oneDayInMilliseconds = 24 * 60 * 60 * 1000;
+  const ttlTimestamp = now + oneDayInMilliseconds;
+  return Math.floor(ttlTimestamp / 1000);
+}
+
+/**
+ * Validate if match data is valid (not null/empty/undefined)
+ */
+function isValidMatchData(data: any): boolean {
+  if (data == null) return false;
+  if (typeof data !== 'object') return false;
+  if (Object.keys(data).length === 0) return false;
+  // Check for required Riot API match structure
+  if (!data.metadata?.matchId && !data.info) return false;
+  return true;
+}
+
+/**
+ * Get match data from DynamoDB MatchCache
+ */
+async function getMatchFromDynamoDB(matchId: string): Promise<any | null> {
+  try {
+    const client = getClient();
+    const { data, errors } = await client.models.MatchCache.get({ matchId });
+    
+    if (errors) {
+      console.warn(`Error reading match ${matchId} from DynamoDB:`, errors);
+      return null;
+    }
+    
+    if (!data) {
+      return null;
+    }
+    
+    // Parse matchData if it's a string
+    let matchData = data.matchData;
+    if (typeof matchData === 'string') {
+      try {
+        matchData = JSON.parse(matchData);
+      } catch (e) {
+        console.warn(`Failed to parse matchData for ${matchId}:`, e);
+        return null;
+      }
+    }
+    
+    // Validate the match data
+    if (!isValidMatchData(matchData)) {
+      console.log(`Match ${matchId} in DynamoDB has invalid/empty matchData`);
+      return null;
+    }
+    
+    return matchData;
+  } catch (error: any) {
+    console.warn(`Error reading match ${matchId} from DynamoDB:`, error);
+    return null;
+  }
+}
+
+/**
+ * Store match data in DynamoDB MatchCache
+ */
+async function storeMatchInDynamoDB(matchId: string, matchData: any, gameCreation?: number): Promise<void> {
+  try {
+    const client = getClient();
+    const ttl = getTTLTimestamp();
+    
+    // Extract gameCreation from matchData if not provided
+    const gameCreationTime = gameCreation || matchData?.info?.gameCreation || Date.now();
+    
+    await client.models.MatchCache.create({
+      matchId,
+      gameCreation: gameCreationTime,
+      matchData: matchData,
+      ttl,
+      processedAt: Date.now(),
+    });
+  } catch (error: any) {
+    // If it's a duplicate, try to update instead
+    if (error?.message?.includes('already exists') || error?.message?.includes('duplicate')) {
+      try {
+        const client = getClient();
+        const ttl = getTTLTimestamp();
+        await client.models.MatchCache.update({
+          matchId,
+          matchData: matchData,
+          ttl,
+        });
+      } catch (updateError) {
+        console.warn(`Error updating match ${matchId} in DynamoDB:`, updateError);
+        // Don't throw - caching failure shouldn't break the API call
+      }
+    } else {
+      console.warn(`Error storing match ${matchId} in DynamoDB:`, error);
+      // Don't throw - caching failure shouldn't break the API call
+    }
+  }
 }
 
 /**
@@ -161,20 +258,17 @@ interface GraphQLResolverEvent {
     // searchPlayer arguments
     gameName?: string;
     tagLine?: string;
-    region?: string;
     
     // fetchMatchIds arguments
     puuid?: string;
     count?: number;
-    platformId?: string;
     start?: number;
     
     // getMatchDetails arguments
     matchId?: string;
     
-    // getMatchTimeline arguments (uses matchId and platformId)
-    
-    
+    // Shared arguments
+    region?: string; // Used by searchPlayer, fetchMatchIds, getMatchDetails, getMatchTimeline, getAccountByPuuid
   };
   info: {
     fieldName: string;
@@ -226,8 +320,7 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
     // Handle fetchMatchIds query
     if (fieldName === 'fetchMatchIds' && args.puuid) {
-      const platformId = args.platformId || 'na1';
-      const region = getRegionFromPlatform(platformId);
+      const region = args.region || RiotRegion.AMERICAS;
       const count = args.count || 20;
       const start = args.start || 0;
       const startTime = get365DaysAgoTimestamp();
@@ -256,17 +349,27 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
     // Handle getMatchDetails query
     if (fieldName === 'getMatchDetails' && args.matchId) {
-      // Check S3 cache first
+      // Check DynamoDB first (primary source)
+      const dynamoMatch = await getMatchFromDynamoDB(args.matchId);
+      if (dynamoMatch) {
+        console.log(`DynamoDB hit for match ${args.matchId}`);
+        return dynamoMatch;
+      }
+
+      // Check S3 cache second (cache layer)
       const cachedMatch = await getCachedMatch(args.matchId);
-      if (cachedMatch) {
-        console.log(`Cache hit for match ${args.matchId}`);
+      if (cachedMatch && isValidMatchData(cachedMatch)) {
+        console.log(`S3 cache hit for match ${args.matchId}`);
+        // Store in DynamoDB for future use (fire and forget)
+        storeMatchInDynamoDB(args.matchId, cachedMatch, cachedMatch?.info?.gameCreation).catch(err =>
+          console.warn(`Failed to store match ${args.matchId} in DynamoDB:`, err)
+        );
         return cachedMatch;
       }
 
       // Cache miss - fetch from Riot API
-      console.log(`Cache miss for match ${args.matchId}, fetching from API`);
-      const platformId = args.platformId || 'na1';
-      const region = getRegionFromPlatform(platformId);
+      console.log(`Cache miss for match ${args.matchId}, fetching from Riot API`);
+      const region = args.region || RiotRegion.AMERICAS;
       const url = `https://${region}.api.riotgames.com/lol/match/v5/matches/${args.matchId}`;
       
       const response = await fetch(url, {
@@ -285,9 +388,17 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
       const matchData = await response.json();
       
-      // Cache the response (fire and forget)
+      // Validate the fetched data
+      if (!isValidMatchData(matchData)) {
+        throw new Error('Invalid match data received from Riot API');
+      }
+      
+      // Store in both DynamoDB and S3 (fire and forget)
+      storeMatchInDynamoDB(args.matchId, matchData, matchData?.info?.gameCreation).catch(err => 
+        console.warn(`Failed to store match ${args.matchId} in DynamoDB:`, err)
+      );
       cacheMatch(args.matchId, matchData).catch(err => 
-        console.warn(`Failed to cache match ${args.matchId}:`, err)
+        console.warn(`Failed to cache match ${args.matchId} in S3:`, err)
       );
 
       return matchData;
@@ -304,8 +415,7 @@ export const handler: Handler<GraphQLResolverEvent, any> = async (event) => {
 
       // Cache miss - fetch from Riot API
       console.log(`Cache miss for timeline ${args.matchId}, fetching from API`);
-      const platformId = args.platformId || 'na1';
-      const region = getRegionFromPlatform(platformId);
+      const region = args.region || RiotRegion.AMERICAS;
       const url = `https://${region}.api.riotgames.com/lol/match/v5/matches/${args.matchId}/timeline`;
       
       const response = await fetch(url, {

@@ -26,9 +26,12 @@ backend.riotApiHttpFunction.addEnvironment(
   backend.storage.resources.bucket.bucketName
 );
 
-// Grant data layer access to dataProcessorFunction
+// Grant data layer access to dataProcessorFunction and riotApiHttpFunction
 // Amplify automatically grants access and configures environment when function is used as handler in schema
-// The function uses IAM authentication which is automatically configured
+// The functions use IAM authentication which is automatically configured
+backend.data.resources.tables.forEach((table) => {
+  table.grantReadWriteData(backend.riotApiHttpFunction.resources.lambda);
+});
 
 // Configure S3 lifecycle policy for 1-year expiration using CDK
 const bucket = backend.storage.resources.bucket.node.defaultChild;

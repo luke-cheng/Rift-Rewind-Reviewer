@@ -16,6 +16,7 @@ const schema = a.schema({
       expiresAt: a.integer(),
       processedAt: a.integer(),
       aiInsights: a.json(),
+      ttl: a.integer(), // DynamoDB TTL field (1 day = 86400 seconds)
     })
     .identifier(["matchId"])
     .secondaryIndexes((index) => [index("gameCreation")])
@@ -95,7 +96,7 @@ const schema = a.schema({
     .arguments({
       puuid: a.string().required(),
       count: a.integer(),
-      platformId: a.string(),
+      region: a.string(),
       start: a.integer(),
     })
     .returns(a.json())
@@ -106,7 +107,7 @@ const schema = a.schema({
     .query()
     .arguments({
       matchId: a.string().required(),
-      platformId: a.string(),
+      region: a.string(),
     })
     .returns(a.json())
     .handler(a.handler.function(riotApiHttpFunction))
@@ -116,7 +117,7 @@ const schema = a.schema({
     .query()
     .arguments({
       matchId: a.string().required(),
-      platformId: a.string(),
+      region: a.string(),
     })
     .returns(a.json())
     .handler(a.handler.function(riotApiHttpFunction))
@@ -139,7 +140,7 @@ const schema = a.schema({
       matches: a.json(), // Optional: if provided, will use these matches instead of fetching
       matchIds: a.json(), // Optional: array of match IDs to fetch
       count: a.integer(), // Optional: number of matches to fetch (default: 20)
-      platformId: a.string(), // Optional: platform ID for Riot API
+      region: a.string(), // Optional: region for Riot API
     })
     .returns(a.json())
     .handler(a.handler.function(dataProcessorFunction))
@@ -158,7 +159,7 @@ const schema = a.schema({
     .mutation()
     .arguments({
       puuid: a.string().required(),
-      platformId: a.string(), // Optional: platform ID for Riot API
+      region: a.string(), // Optional: region for Riot API
     })
     .returns(a.json())
     .handler(a.handler.function(dataProcessorFunction))

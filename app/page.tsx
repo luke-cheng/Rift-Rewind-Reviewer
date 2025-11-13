@@ -1,47 +1,30 @@
 "use client";
 
-import NavBar from "@/components/NavBar";
-import Footer from "@/components/Footer";
 import { View, Flex, Text } from "@aws-amplify/ui-react";
+import PageLayout from "@/components/PageLayout";
+import { Amplify } from "aws-amplify";
+import outputs from "../amplify_outputs.json";
+import "@aws-amplify/ui-react/styles.css";
 
+Amplify.configure(outputs);
 
 export default function HomePage() {
   return (
-    <View width="100%" minHeight="100vh" backgroundColor="background.primary">
-      <Flex direction="column" minHeight="100vh">
-        {/* NavBar */}
-        <NavBar />
-
-        {/* Main content */}
-        <View
-          flex="1"
-          width="100%"
-          maxWidth="1200px"
-          margin="0 auto"
-          paddingLeft={{ base: "medium", large: "large" }}
-          paddingRight={{ base: "medium", large: "large" }}
-          paddingTop="large"
-          paddingBottom="large"
-        >
-          <View padding="large" textAlign="center">
-            <Flex direction="column" gap="medium" alignItems="center">
-              <Text fontSize="2xl" fontWeight="bold">
-                Rift Rewind Reviewer
-              </Text>
-              <Text fontSize="lg" color="font.secondary">
-                Track, Reflect, Develop
-              </Text>
-              <Text color="font.secondary" marginTop="medium">
-                Enter a player GameName#tagLine to view their stats and match
-                history and gain AI insights.
-              </Text>
-            </Flex>
-          </View>
-        </View>
-
-        {/* Footer */}
-        <Footer />
-      </Flex>
-    </View>
+    <PageLayout>
+      <View padding="large" textAlign="center">
+        <Flex direction="column" gap="medium" alignItems="center">
+          <Text fontSize="2xl" fontWeight="bold">
+            Rift Rewind Reviewer
+          </Text>
+          <Text fontSize="lg" color="font.secondary">
+            Track, Reflect, Develop
+          </Text>
+          <Text color="font.secondary" marginTop="medium">
+            Enter a player GameName#tagLine to view their stats and match
+            history and gain AI insights.
+          </Text>
+        </Flex>
+      </View>
+    </PageLayout>
   );
 }

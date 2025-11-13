@@ -24,12 +24,9 @@ export default function AIStatsComment({
     <Flex direction="column" gap="small">
       {title && (
         <Flex direction="row" justifyContent="space-between" alignItems="center">
-          <Text fontSize="md" fontWeight="semibold">
-            {title}
-          </Text>
-          {insights ? (
-            <AIInsightIndicator insights={insights} />
-          ) : onGenerateInsights ? (
+          <Text fontSize="md" fontWeight="semibold">{title}</Text>
+          {insights && <AIInsightIndicator insights={insights} />}
+          {!insights && onGenerateInsights && (
             <Button
               size="small"
               variation="link"
@@ -46,7 +43,7 @@ export default function AIStatsComment({
                 "✨ Generate Insights"
               )}
             </Button>
-          ) : null}
+          )}
         </Flex>
       )}
       {children}

@@ -61,31 +61,30 @@ This fil is just for UI only. Integrate AI analytics into the StatsDashboard and
 
 ## Page
 
-### Home Page
+ player/[puuid]/page.tsx
+NavBar + stats dashboard + match histories + Footer
 
-NavBar + stats dashboard+match histories + Footer
-
-### Match detail
-
-MatchDetailPage + Footer
+match/[matchId]/page.tsx
+Nav Bar + MatchDetailPage + Footer
 
 ## File Structure
 
 ```
-components/                   # use @aws-amplify/ui-react
+client.ts                     # Amplify Gen 2 way to Inject AI
+components/                   # Use @aws-amplify/ui-react
   NavBar.tsx                  # Navigation bar with integrated player search
   PlayerSearch.tsx            # Player search form component
   AIInsightIndicator.tsx      # Hover tooltip with AI icon badge
   AIMatchTag.tsx              # Tag badges for matches
   AIStatsComment.tsx          # Stats section comment wrapper
-  MatchHistory.tsx            # Match list with AI tagging
+  MatchHistory.tsx            # MatchCard list with AI tagging
   MatchCard.tsx               # Individual match card with color accent
   StatsDashboard.tsx          # Main stats dashboard
-  StatSection.tsx             # Reusable stat section
+  Toast.tsx                   # Display Error
 
 app/
-  layout.tsx                  # Root layout with navigation bar
-  page.tsx                    # Home/landing page (StatsDashboard + MatchHistory)
+  layout.tsx                  # Root layout with Amplify Gen 2 config
+  page.tsx                    # Home/landing page
   match/[matchId]/page.tsx    # Detailed match history for current player
-  player/[puuid]/page.tsx     # Player stats with time-seried analytical
+  player/[puuid]/page.tsx     # StatsDashboard + MatchHistory
 ```

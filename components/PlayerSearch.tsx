@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { TextField, Button, Flex, Text } from "@aws-amplify/ui-react";
-import { useToast } from "@/context/ToastContext";
 
 interface PlayerSearchProps {
   onSearch: (gameName: string, tagLine: string) => void;
@@ -12,26 +11,18 @@ interface PlayerSearchProps {
 export default function PlayerSearch({ onSearch, isLoading }: PlayerSearchProps) {
   const [gameName, setGameName] = useState("");
   const [tagLine, setTagLine] = useState("");
-  const { warning: showWarning } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedGameName = gameName.trim();
     const trimmedTagLine = tagLine.trim();
 
-    if (!trimmedGameName) {
-      showWarning("Please enter a player name.");
-      return;
-    }
-
-    if (!trimmedTagLine) {
-      showWarning("Please enter a tag line.");
+    if (!trimmedGameName || !trimmedTagLine) {
       return;
     }
 
     // Validate format: gameName#tagLine
     if (trimmedGameName.includes("#")) {
-      showWarning("Player name should not contain #. Use the tag field instead.");
       return;
     }
 

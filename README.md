@@ -1,6 +1,6 @@
 # Rift Rewind Reviewer - Track, Reflect, Develop
 
-> ! The demo link may not be available because the Riot Dev API expires in less than 24 hours. It is recommended to self-deploy to your own [AWS Amplify](https://docs.amplify.aws/nextjs/start/quickstart/nextjs-app-router-client-components/#deploy-a-fullstack-app-to-aws). And [set up your own riot api key](./SETUP_RIOT_API_KEY.md)
+> ! The demo link may not be always available because the Riot API key is set to expires per 24 hours. I highly recommended to get you own Riot API key and self-deploy to your own AWS Amplify. See [Self Deploy](./docs/SELF_DEPLOY_GUIDE.md)
 
 ## Overview
 

@@ -6,7 +6,7 @@ import { Card, Flex, Text, Badge, Loader } from "@aws-amplify/ui-react";
 import { MatchParticipant, AIInsights } from "./types";
 import AIInsightIndicator from "./AIInsightIndicator";
 import AIMatchTag from "./AIMatchTag";
-import { client, useAIGeneration } from "@/app/client";
+import { client, useAIGeneration } from "@/client";
 
 interface MatchCardProps {
   match: MatchParticipant;
@@ -15,7 +15,6 @@ interface MatchCardProps {
 export default function MatchCard({ match }: MatchCardProps) {
   const router = useRouter();
   const [insights, setInsights] = useState<AIInsights | undefined>(match.aiInsights);
-  const [isGenerating, setIsGenerating] = useState(false);
   const hasAttemptedGeneration = useRef(false);
   
   const [{ data: generatedInsights, isLoading }, generateMatchInsights] = useAIGeneration("generateMatchInsights");
@@ -24,13 +23,11 @@ export default function MatchCard({ match }: MatchCardProps) {
     router.push(`/match/${match.matchId}`);
   };
 
-  // Automatically generate insights if they don't exist (only once per match)
   useEffect(() => {
-    const shouldGenerateInsights = !match.aiInsights || !match.aiInsights.severity;
+    const shouldGenerate = !match.aiInsights?.severity && !hasAttemptedGeneration.current && !isLoading;
     
-    if (shouldGenerateInsights && !hasAttemptedGeneration.current && !isGenerating && !isLoading) {
+    if (shouldGenerate) {
       hasAttemptedGeneration.current = true;
-      setIsGenerating(true);
       generateMatchInsights({
         matchData: {
           matchId: match.matchId,
@@ -52,9 +49,8 @@ export default function MatchCard({ match }: MatchCardProps) {
         },
       });
     }
-  }, [match.matchId, match.aiInsights, isGenerating, isLoading, generateMatchInsights]);
+  }, [match.matchId, match.aiInsights, isLoading, generateMatchInsights]);
 
-  // Update local state and save to database when insights are generated
   useEffect(() => {
     if (generatedInsights && !insights) {
       const formattedInsights: AIInsights = {
@@ -63,22 +59,19 @@ export default function MatchCard({ match }: MatchCardProps) {
         analysis: generatedInsights.analysis || undefined,
       };
       setInsights(formattedInsights);
-      setIsGenerating(false);
 
-      // Save insights to database
       client.models.MatchParticipantIndex.update({
         puuid: match.puuid,
         matchId: match.matchId,
         aiInsights: formattedInsights,
-      }).catch((error) => {
-        console.error(`Failed to save insights for match ${match.matchId}:`, error);
+      }).catch(() => {
+        // Silently fail - insights will still be shown locally
       });
     }
   }, [generatedInsights, match.puuid, match.matchId, insights]);
 
   const gameDate = new Date(match.gameCreation);
   const kdaDisplay = match.kda !== undefined ? match.kda.toFixed(2) : "N/A";
-  const isGeneratingInsights = isGenerating || isLoading;
 
   // Determine border accent color based on AI severity
   const getBorderStyle = () => {
@@ -154,7 +147,7 @@ export default function MatchCard({ match }: MatchCardProps) {
           <Text color="font.secondary" fontSize="small">
             KDA: {kdaDisplay}
           </Text>
-          {isGeneratingInsights ? (
+          {isLoading ? (
             <Flex direction="row" gap="xs" alignItems="center">
               <Loader size="small" />
               <Text fontSize="x-small" color="font.secondary">
