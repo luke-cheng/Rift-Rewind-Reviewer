@@ -29,7 +29,7 @@ backend.riotApiHttpFunction.addEnvironment(
 // Grant data layer access to dataProcessorFunction and riotApiHttpFunction
 // Amplify automatically grants access and configures environment when function is used as handler in schema
 // The functions use IAM authentication which is automatically configured
-backend.data.resources.tables.forEach((table) => {
+Object.values(backend.data.resources.tables).forEach((table) => {
   table.grantReadWriteData(backend.riotApiHttpFunction.resources.lambda);
 });
 
