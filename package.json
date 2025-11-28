@@ -27,7 +27,7 @@
     "@aws-amplify/ui-react-ai": "^1.5.0",
     "@aws-sdk/client-s3": "^3.0.0",
     "aws-amplify": "^6.15.8",
-    "next": "14.2.10",
+    "next": "14.2.32",
     "react": "^18",
     "react-dom": "^18"
   },
@@ -40,8 +40,8 @@
     "aws-cdk": "^2",
     "aws-cdk-lib": "^2",
     "constructs": "^10.3.0",
-    "esbuild": "^0.23.1",
-    "tsx": "^4.19.0",
+    "esbuild": "^0.27.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.6.2"
   }
 }
